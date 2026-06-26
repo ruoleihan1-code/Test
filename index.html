@@ -1,0 +1,2318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow老师教学APP - 快乐英语大冒险</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            pink: '#FF7A90',
+                            yellow: '#FFC83B',
+                            blue: '#4BA3FF',
+                            purple: '#9B51E0',
+                            green: '#27AE60',
+                            bg: '#FFF8F0',
+                            card: '#FFFFFF',
+                        }
+                    },
+                    borderRadius: {
+                        'cartoon': '1.5rem',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- PDF.js for extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Tesseract.js for OCR Image parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #FFFDF9;
+            background-image: radial-gradient(#FFEDD5 1.5px, transparent 1.5px), radial-gradient(#FFEDD5 1.5px, #FFFDF9 1.5px);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+        }
+        .font-kids {
+            font-family: 'Fredoka One', 'Noto Sans SC', sans-serif;
+        }
+        /* Cartoonish Shadow */
+        .cartoon-shadow {
+            box-shadow: 0 8px 0px 0px #F3D2C1;
+        }
+        .cartoon-shadow-sm {
+            box-shadow: 0 4px 0px 0px #F3D2C1;
+        }
+        .cartoon-shadow-pink {
+            box-shadow: 0 6px 0px 0px #FFD2D7;
+        }
+        .cartoon-shadow-blue {
+            box-shadow: 0 6px 0px 0px #C7E2FE;
+        }
+        .cartoon-shadow-yellow {
+            box-shadow: 0 6px 0px 0px #FFF3D6;
+        }
+        .cartoon-border {
+            border: 3px solid #4A3E3D;
+        }
+        /* Smooth transitions */
+        .transition-all {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        /* Hide scrollbars but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* 💡 弹性淡入缓动动效 - 完美解决页面跳变与闪烁问题 */
+        @keyframes tabFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .tab-content:not(.hidden) {
+            animation: tabFadeIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-gray-800">
+
+    <!-- 全局提示消息组件 -->
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 scale-95">
+        <div class="bg-white border-4 border-gray-800 rounded-cartoon px-6 py-3 shadow-lg flex items-center space-x-3">
+            <span id="toast-icon" class="text-2xl">✨</span>
+            <span id="toast-text" class="font-bold text-gray-800"></span>
+        </div>
+    </div>
+
+    <!-- 顶栏导航 -->
+    <header class="w-full max-w-7xl mx-auto px-4 pt-4 pb-2 flex justify-between items-center z-10 gap-2">
+        <div class="flex items-center space-x-2 bg-white border-3 border-gray-800 rounded-full px-4 py-2 shadow-sm">
+            <span class="text-3xl">🥑</span>
+            <span class="font-kids font-bold text-lg md:text-xl text-gray-800 tracking-wide">Shadow老师教学APP</span>
+        </div>
+        
+        <!-- 云端数据库连接指示器与登录状态组 -->
+        <div class="flex items-center space-x-2">
+            <!-- 实时连线连通状态监视 Badge -->
+            <button onclick="openApiKeyModal()" id="db-status-badge" class="bg-white border-3 border-gray-850 rounded-full px-3 py-1.5 flex items-center space-x-1.5 text-xs font-bold shadow-sm transition-all hover:bg-gray-50 transform active:scale-95">
+                <span id="db-status-dot" class="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse"></span>
+                <span id="db-status-text" class="text-gray-700 hidden sm:inline text-xs">正在建连...</span>
+            </button>
+
+            <!-- 登录状态 & 登出 -->
+            <div id="user-header-info" class="hidden flex items-center space-x-2">
+                <div class="bg-white border-3 border-gray-800 rounded-full px-3.5 py-1.5 flex items-center space-x-2">
+                    <span id="header-avatar" class="text-lg">🦊</span>
+                    <span id="header-username" class="font-bold text-gray-750 text-xs sm:text-sm">未登录</span>
+                    <span id="header-role" class="bg-brand-blue text-white text-[10px] px-2 py-0.5 rounded-full font-bold">角色</span>
+                </div>
+                <button onclick="logout()" class="bg-red-400 hover:bg-red-500 text-white border-3 border-gray-800 p-2 rounded-full cartoon-shadow-sm transition-all transform active:translate-y-1">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主容器 -->
+    <main class="flex-grow w-full max-w-7xl mx-auto px-4 py-4 flex flex-col justify-center">
+        
+        <!-- 1. 登录界面 -->
+        <div id="view-login" class="w-full max-w-md mx-auto my-auto bg-white border-4 border-gray-800 rounded-cartoon p-6 md:p-8 cartoon-shadow relative overflow-hidden">
+            <!-- 装饰小彩带 -->
+            <div class="absolute -top-10 -left-10 w-24 h-24 bg-brand-yellow rounded-full opacity-30"></div>
+            <div class="absolute -bottom-10 -right-10 w-32 h-32 bg-brand-pink rounded-full opacity-30"></div>
+            
+            <div class="text-center mb-8 relative z-10">
+                <span class="text-6xl inline-block animate-bounce duration-1000 mb-2">🎈</span>
+                <h2 class="text-3xl font-kids font-bold text-gray-800">欢 迎 来 到 !</h2>
+                <p class="text-gray-500 font-bold mt-1">请选择您的身份，开始学习冒险吧！</p>
+            </div>
+
+            <!-- 登录身份切换 -->
+            <div class="flex border-3 border-gray-800 rounded-2xl overflow-hidden mb-6 bg-gray-100 p-1">
+                <button onclick="switchLoginRole('student')" id="btn-role-student" class="flex-1 py-3 text-center rounded-xl font-bold text-gray-700 transition-all bg-white border-3 border-gray-800">
+                    👶 我是学生
+                </button>
+                <button onclick="switchLoginRole('teacher')" id="btn-role-teacher" class="flex-1 py-3 text-center rounded-xl font-bold text-gray-500 transition-all hover:text-gray-700">
+                    👩‍🏫 Shadow老师
+                </button>
+            </div>
+
+            <!-- 登录表单 -->
+            <form onsubmit="handleLogin(event)" class="space-y-4 relative z-10">
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2 flex items-center space-x-1">
+                        <i data-lucide="user" class="w-4 h-4 text-brand-blue"></i>
+                        <span>账号 / 英文用户名</span>
+                    </label>
+                    <input type="text" id="login-username" required placeholder="请输入您的账号" 
+                        class="w-full px-4 py-3 rounded-2xl border-3 border-gray-800 focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all font-medium text-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-bold mb-2 flex items-center space-x-1">
+                        <i data-lucide="lock" class="w-4 h-4 text-brand-pink"></i>
+                        <span>密码</span>
+                    </label>
+                    <input type="password" id="login-password" required placeholder="请输入密码" 
+                        class="w-full px-4 py-3 rounded-2xl border-3 border-gray-800 focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all font-medium text-lg">
+                </div>
+                <button type="submit" class="w-full bg-brand-yellow hover:bg-yellow-400 text-gray-850 font-bold py-4 px-6 rounded-2xl border-4 border-gray-800 cartoon-shadow transition-all transform active:translate-y-1 text-xl flex items-center justify-center space-x-2">
+                    <span>开始大冒险!</span>
+                    <i data-lucide="arrow-right-circle" class="w-6 h-6"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. 教师端界面 -->
+        <div id="view-teacher" class="hidden w-full flex flex-col gap-6">
+            
+            <!-- 教师顶部横向吸顶导航栏 -->
+            <div class="sticky top-2 z-35 w-full bg-white/95 backdrop-blur border-4 border-gray-800 rounded-cartoon p-3 sm:p-4 cartoon-shadow flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="flex items-center space-x-3 shrink-0">
+                    <span class="text-3xl sm:text-4xl animate-pulse">👑</span>
+                    <div>
+                        <h3 class="font-kids font-bold text-base sm:text-lg text-gray-800 leading-none">Shadow 老师</h3>
+                        <p class="text-[10px] sm:text-xs text-brand-purple font-bold mt-1">超级教学领航员</p>
+                    </div>
+                </div>
+                
+                <!-- 横向导航 TAB 按钮组 -->
+                <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0">
+                    <button onclick="switchTeacherTab('tab-prep')" id="btn-teacher-prep" class="tab-btn shrink-0 flex items-center space-x-1.5 px-3.5 py-2.5 rounded-2xl font-bold border-3 border-gray-800 bg-brand-yellow text-gray-800 text-xs sm:text-sm transition-all transform active:translate-y-0.5">
+                        <span class="text-base">📚</span>
+                        <span>课前预习发布</span>
+                    </button>
+                    <button onclick="switchTeacherTab('tab-summary')" id="btn-teacher-summary" class="tab-btn shrink-0 flex items-center space-x-1.5 px-3.5 py-2.5 rounded-2xl font-bold border-3 border-transparent text-gray-600 hover:border-gray-800 hover:bg-orange-50/50 text-xs sm:text-sm transition-all transform active:translate-y-0.5">
+                        <span class="text-base">🏆</span>
+                        <span>课后总结管理</span>
+                    </button>
+                    <button onclick="switchTeacherTab('tab-students')" id="btn-teacher-students" class="tab-btn shrink-0 flex items-center space-x-1.5 px-3.5 py-2.5 rounded-2xl font-bold border-3 border-transparent text-gray-600 hover:border-gray-800 hover:bg-orange-50/50 text-xs sm:text-sm transition-all transform active:translate-y-0.5">
+                        <span class="text-base">🎯</span>
+                        <span>学生名单管理</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 教师内容展示区域 -->
+            <div class="flex-grow w-full space-y-6 min-h-[580px]">
+                
+                <!-- TAB 1: 课前预习 -->
+                <div id="teacher-tab-prep" class="tab-content space-y-6">
+                    <!-- 新建预习卡片 -->
+                    <div class="bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                            <h3 class="text-2xl font-bold text-gray-800 flex items-center space-x-2">
+                                <span>🚀 AI 魔法课件生成器</span>
+                                <span class="bg-brand-blue text-white text-xs px-2.5 py-1 rounded-full">基于 Gemini 2.5</span>
+                            </h3>
+                            <!-- API Key设置触发器 -->
+                            <button onclick="openApiKeyModal()" class="flex items-center space-x-1.5 text-xs text-gray-500 hover:text-brand-purple font-bold border-2 border-gray-300 rounded-full px-3 py-1 bg-gray-50">
+                                <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                                <span>云配置 / 诊断日志</span>
+                            </button>
+                        </div>
+
+                        <!-- 步骤流程 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- 导入源文件/文本 -->
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-gray-700 font-bold mb-2">1. 导入教材 PDF (选择文件，稍后手动分析) 或直接粘贴文本</label>
+                                    <!-- PDF选择区域 (已重构，防止上传自动触发提取) -->
+                                    <div class="border-3 border-dashed border-gray-300 hover:border-brand-blue rounded-2xl p-4 text-center cursor-pointer relative bg-orange-50/20 transition-all">
+                                        <input type="file" id="pdf-file-input" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer" onchange="onPdfFileSelected(event)">
+                                        <div class="space-y-1">
+                                            <span class="text-3xl inline-block">📂</span>
+                                            <p class="font-bold text-sm text-gray-600" id="pdf-file-name">点击或拖拽上传 PDF 教材</p>
+                                            <p class="text-xs text-gray-400">选择后可以设置精确页数并启动一键提取</p>
+                                        </div>
+                                    </div>
+                                    <!-- 新增手动分析提取文本启动按钮 -->
+                                    <button id="btn-parse-pdf" onclick="startPdfParsing()" class="hidden w-full mt-3 bg-brand-blue hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-xl border-2 border-gray-800 transition-all flex items-center justify-center space-x-1.5 text-sm shadow-sm transform active:translate-y-0.5">
+                                        <i data-lucide="play" class="w-4 h-4"></i>
+                                        <span>⚡ 开始解析并提取PDF文本</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-600 mb-1">开始页码</label>
+                                        <input type="number" id="pdf-start-page" value="1" min="1" class="w-full px-3 py-1.5 rounded-xl border-2 border-gray-800 font-bold text-center">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-600 mb-1">结束页码</label>
+                                        <input type="number" id="pdf-end-page" value="5" min="1" class="w-full px-3 py-1.5 rounded-xl border-2 border-gray-800 font-bold text-center">
+                                    </div>
+                                </div>
+
+                                <!-- 新增：OCR 引擎选项 -->
+                                <label class="flex items-start space-x-2 bg-pink-50/50 p-3 rounded-xl border-2 border-brand-pink/30 cursor-pointer hover:bg-pink-50 transition-all">
+                                    <input type="checkbox" id="pdf-ocr-enable" class="mt-0.5 rounded text-brand-pink border-brand-pink/50 focus:ring-brand-pink w-4 h-4">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-gray-700">📸 开启图片深度扫描 (OCR引擎)</span>
+                                        <span class="text-[10px] text-gray-500 mt-0.5">如果您的教材是全图片、扫描件，请勾选此项。解析会稍慢。</span>
+                                    </div>
+                                </label>
+
+                                <div class="text-center text-xs font-bold text-gray-400">- 或者直接在下方贴入课文文本 -</div>
+
+                                <div>
+                                    <textarea id="lesson-raw-text" rows="4" placeholder="请在这里粘贴英语教材原文、课文内容或刚才提取的PDF文本..." class="w-full p-3 rounded-2xl border-3 border-gray-800 text-sm focus:ring-4 focus:ring-orange-100 focus:outline-none"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- 生成选项控制 -->
+                            <div class="flex flex-col justify-between bg-yellow-50/50 border-3 border-gray-800 rounded-2xl p-4">
+                                <div class="space-y-3">
+                                    <h4 class="font-bold text-gray-800 flex items-center space-x-1.5">
+                                        <span>⚙️ 预设生成内容：</span>
+                                    </h4>
+                                    <div class="space-y-2 text-sm text-gray-600 font-medium">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-lg">📖</span><span>生成该课本内容的<b>核心语法知识点解析</b></span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-lg">🔤</span><span>生成 <b>30 个生词</b>（音标、中文释义、原文例句、外加例句）</span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-lg">🎗️</span><span>生成 <b>10 个关键短语</b>（音标、中文、原文例句、外加例句）</span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-lg">📝</span><span>生成 <b>30 道知识点选择测试题</b></span>
+                                        </div>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-lg">🔗</span><span>寻找 <b>5 个相关的拓展阅读材料</b></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onclick="triggerAiGeneration()" class="w-full mt-6 bg-brand-pink hover:bg-rose-400 text-white font-bold py-4 px-6 rounded-2xl border-3 border-gray-800 cartoon-shadow-pink transition-all transform active:translate-y-1 flex items-center justify-center space-x-2 text-lg">
+                                    <span>🪄 唤醒魔法 AI 生成</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 生成结果编辑与发布区 -->
+                    <div id="ai-result-panel" class="hidden bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow space-y-6">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-4 border-gray-800 pb-4">
+                            <div>
+                                <input type="text" id="prep-assignment-title" value="新课预习：Module 1 Lesson 1" class="text-2xl font-bold text-gray-800 focus:outline-none bg-orange-50/50 px-3 py-1 rounded-xl border-2 border-dashed border-gray-400 w-full md:w-96">
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-gray-600 text-sm">选择发送的学生:</span>
+                                <div id="prep-student-selector" class="flex flex-wrap gap-1.5 max-w-xs max-h-24 overflow-y-auto bg-gray-50 p-2 rounded-xl border-2 border-gray-300">
+                                    <!-- 动态加载学生多选框 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 知识点 TABs -->
+                        <div class="flex border-b-2 border-gray-200 gap-1 overflow-x-auto no-scrollbar">
+                            <button onclick="switchPreviewTab('subtab-grammar')" id="btn-subtab-grammar" class="subtab-btn shrink-0 px-4 py-2 font-bold text-gray-700 border-b-4 border-brand-blue bg-blue-50/50 rounded-t-xl text-sm">📖 语法点</button>
+                            <button onclick="switchPreviewTab('subtab-vocab')" id="btn-subtab-vocab" class="subtab-btn shrink-0 px-4 py-2 font-bold text-gray-500 border-b-4 border-transparent hover:text-gray-700 text-sm">🔤 生词 (30)</button>
+                            <button onclick="switchPreviewTab('subtab-phrase')" id="btn-subtab-phrase" class="subtab-btn shrink-0 px-4 py-2 font-bold text-gray-500 border-b-4 border-transparent hover:text-gray-700 text-sm">🎗️ 短语 (10)</button>
+                            <button onclick="switchPreviewTab('subtab-quiz')" id="btn-subtab-quiz" class="subtab-btn shrink-0 px-4 py-2 font-bold text-gray-500 border-b-4 border-transparent hover:text-gray-700 text-sm">📝 测试题 (30)</button>
+                            <button onclick="switchPreviewTab('subtab-reading')" id="btn-subtab-reading" class="subtab-btn shrink-0 px-4 py-2 font-bold text-gray-500 border-b-4 border-transparent hover:text-gray-700 text-sm">🔗 阅读推荐 (5)</button>
+                        </div>
+
+                        <!-- 1. 语法点编辑 -->
+                        <div id="subtab-content-grammar" class="subtab-panel space-y-4">
+                            <label class="block font-bold text-gray-700">核心语法知识点 (支持富文本/Markdown编辑):</label>
+                            <textarea id="edit-grammar-text" rows="12" class="w-full p-4 rounded-cartoon border-3 border-gray-800 focus:outline-none focus:ring-4 focus:ring-blue-100 font-mono text-sm leading-relaxed"></textarea>
+                        </div>
+
+                        <!-- 2. 生词编辑 -->
+                        <div id="subtab-content-vocab" class="subtab-panel hidden space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                            <p class="text-xs text-gray-500 font-bold">💡 提示：您可以点击直接修改单元格内的文本内容。</p>
+                            <div class="overflow-x-auto rounded-xl border-2 border-gray-800">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-gray-100 border-b-2 border-gray-800 font-bold">
+                                        <tr>
+                                            <th class="p-2 border-r-2 border-gray-800 w-12 text-center">#</th>
+                                            <th class="p-2 border-r-2 border-gray-800 w-36">词汇</th>
+                                            <th class="p-2 border-r-2 border-gray-800 w-36">音标</th>
+                                            <th class="p-2 border-r-2 border-gray-800 w-36">中文意思</th>
+                                            <th class="p-2 border-r-2 border-gray-800">原文例句</th>
+                                            <th class="p-2">额外精选例句</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="vocab-table-body" class="font-medium">
+                                        <!-- 生词行数据 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 3. 短语编辑 -->
+                        <div id="subtab-content-phrase" class="subtab-panel hidden space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                            <div class="overflow-x-auto rounded-xl border-2 border-gray-800">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-gray-100 border-b-2 border-gray-800 font-bold">
+                                        <tr>
+                                            <th class="p-2 border-r-2 border-gray-800 w-12 text-center">#</th>
+                                            <th class="p-2 border-r-2 border-gray-800 w-36">常用短语</th>
+                                            <th class="p-2 border-r-2 border-gray-800 w-36">音标</th>
+                                            <th class="p-2 border-r-2 border-gray-800 w-36">中文意思</th>
+                                            <th class="p-2 border-r-2 border-gray-800">原文例句</th>
+                                            <th class="p-2">额外精选例句</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="phrase-table-body" class="font-medium">
+                                        <!-- 短语行数据 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 4. 测试题编辑 -->
+                        <div id="subtab-content-quiz" class="subtab-panel hidden space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                            <div id="quiz-list-editor" class="space-y-4">
+                                <!-- 30 道选择题列表 -->
+                            </div>
+                        </div>
+
+                        <!-- 5. 阅读推荐编辑 -->
+                        <div id="subtab-content-reading" class="subtab-panel hidden space-y-4">
+                            <div id="reading-links-editor" class="space-y-3">
+                                <!-- 5条阅读推荐 -->
+                            </div>
+                        </div>
+
+                        <!-- 底部发布按钮 -->
+                        <div class="flex justify-end space-x-3 pt-4 border-t-2 border-gray-200">
+                            <button onclick="cancelPrepPublish()" class="px-5 py-3 rounded-2xl border-3 border-gray-800 font-bold hover:bg-gray-150 transition-all text-sm">取消编辑</button>
+                            <button onclick="submitPrepPublish()" class="bg-brand-blue hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-2xl border-3 border-gray-800 cartoon-shadow-blue transition-all transform active:translate-y-1 flex items-center space-x-1">
+                                <span>🚀 立即发布课前预习</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 已发布列表管理 -->
+                    <div class="bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                            <span>📡 课前预习发布历史</span>
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm font-medium">
+                                <thead class="bg-gray-50 text-gray-600 border-b-2 border-gray-200">
+                                    <tr>
+                                        <th class="p-3">预习标题</th>
+                                        <th class="p-3">发布时间</th>
+                                        <th class="p-3">接收学生</th>
+                                        <th class="p-3 text-center">打卡进度 (已完成/总数)</th>
+                                        <th class="p-3 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prep-list-tbody" class="divide-y divide-gray-100">
+                                    <!-- 发布的预习课件数据 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: 课后总结 -->
+                <div id="teacher-tab-summary" class="tab-content hidden space-y-6">
+                    <!-- 新建总结卡片 -->
+                    <div class="bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center space-x-1.5">
+                            <span>🏆 新建课后学习报告与任务</span>
+                        </h3>
+                        <form onsubmit="handlePostClassSummarySubmit(event)" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <input type="hidden" id="edit-summary-id">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">课程标题 / 单元名称</label>
+                                    <input type="text" id="summary-title" required placeholder="如：Module 1 Lesson 1 核心对话课" class="w-full px-4 py-2.5 rounded-xl border-3 border-gray-800 font-bold focus:ring-4 focus:ring-orange-100 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">上课时间</label>
+                                    <input type="datetime-local" id="summary-datetime" required class="w-full px-4 py-2.5 rounded-xl border-3 border-gray-800 font-bold focus:outline-none">
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block font-bold text-gray-700 mb-1">选定学生</label>
+                                        <select id="summary-student" required class="w-full px-4 py-2.5 rounded-xl border-3 border-gray-800 font-bold focus:outline-none">
+                                            <!-- 加载学生列表 -->
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold text-gray-700 mb-1">课堂表现评分</label>
+                                        <select id="summary-rating" required class="w-full px-4 py-2.5 rounded-xl border-3 border-gray-800 font-bold focus:outline-none text-center">
+                                            <option value="很棒">🌟 很棒 (Excellent)</option>
+                                            <option value="不错">✨ 不错 (Good Job)</option>
+                                            <option value="还需提高">💪 还需提高 (Keep Trying)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="space-y-4 flex flex-col justify-between">
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">老师评语</label>
+                                    <textarea id="summary-feedback" required rows="3" placeholder="写下对孩子今天课堂上的赞美，以及需要纠正的细节..." class="w-full p-3 rounded-xl border-3 border-gray-800 font-medium text-sm focus:outline-none focus:ring-4 focus:ring-orange-100"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">课后挑战任务 (每行一项任务)</label>
+                                    <textarea id="summary-tasks" required rows="3" placeholder="1. 熟读课文三遍并录音发群里&#10;2. 完成课后练习册第3页" class="w-full p-3 rounded-xl border-3 border-gray-800 font-medium text-sm focus:outline-none focus:ring-4 focus:ring-orange-100"></textarea>
+                                </div>
+                                <div class="flex space-x-2 pt-2">
+                                    <button type="button" id="btn-cancel-edit-summary" onclick="resetSummaryForm()" class="hidden flex-1 px-4 py-2.5 rounded-xl border-3 border-gray-800 font-bold text-sm bg-gray-50 hover:bg-gray-100 transition-all">取消编辑</button>
+                                    <button type="submit" id="btn-submit-summary" class="flex-grow bg-brand-yellow hover:bg-yellow-400 text-gray-850 font-bold py-2.5 px-6 rounded-xl border-3 border-gray-800 cartoon-shadow-sm transition-all transform active:translate-y-1">
+                                        🚀 发送学习报告
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 历史总结任务追踪 -->
+                    <div class="bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-1.5">
+                            <span>📡 学习报告与任务追踪</span>
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm font-medium">
+                                <thead class="bg-gray-50 text-gray-600 border-b-2 border-gray-200">
+                                    <tr>
+                                        <th class="p-3">学生姓名</th>
+                                        <th class="p-3">课程名称</th>
+                                        <th class="p-3">上课时间</th>
+                                        <th class="p-3 text-center">课堂表现</th>
+                                        <th class="p-3 text-center">任务状态</th>
+                                        <th class="p-3 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="summary-list-tbody" class="divide-y divide-gray-100">
+                                    <!-- 课后总结列表数据 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: 学生名单管理系统 -->
+                <div id="teacher-tab-students" class="tab-content hidden space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                        <!-- 新建/编辑 student 卡片 -->
+                        <div class="bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow h-fit md:sticky md:top-32 z-10 transition-all">
+                            <h3 id="student-form-title" class="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-1.5">
+                                <span>➕ 注册新学生账号</span>
+                            </h3>
+                            <form onsubmit="handleStudentFormSubmit(event)" class="space-y-4">
+                                <input type="hidden" id="edit-student-id">
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">用户名 (拼音或英文)</label>
+                                    <input type="text" id="student-username" required placeholder="如：tom" class="w-full px-4 py-2 rounded-xl border-3 border-gray-800 font-bold focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">登录密码</label>
+                                    <input type="password" id="student-password" required placeholder="请设置密码" class="w-full px-4 py-2 rounded-xl border-3 border-gray-800 font-bold focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-1">账号到期时间</label>
+                                    <input type="date" id="student-expiry" required class="w-full px-4 py-2 rounded-xl border-3 border-gray-800 font-bold focus:outline-none">
+                                </div>
+                                <div class="flex space-x-2 pt-2">
+                                    <button type="button" id="btn-cancel-student" onclick="resetStudentForm()" class="hidden flex-1 px-4 py-2 rounded-xl border-3 border-gray-800 font-bold text-sm bg-gray-50 hover:bg-gray-100 transition-all">取消</button>
+                                    <button type="submit" class="flex-grow bg-brand-blue hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-xl border-3 border-gray-800 cartoon-shadow-blue transition-all transform active:translate-y-1">
+                                        确认保存
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- 学生列表 -->
+                        <div class="bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow md:col-span-2">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-1.5">
+                                <span>📋 在读 student 名册</span>
+                            </h3>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm font-medium">
+                                    <thead class="bg-gray-50 text-gray-600 border-b-2 border-gray-200">
+                                        <tr>
+                                            <th class="p-3">姓名</th>
+                                            <th class="p-3">登录密码</th>
+                                            <th class="p-3">注册时间</th>
+                                            <th class="p-3">到期日期</th>
+                                            <th class="p-3">状态</th>
+                                            <th class="p-3 text-right">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="student-list-tbody" class="divide-y divide-gray-100">
+                                        <!-- 学生表格数据 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 学生端界面 -->
+        <div id="view-student" class="hidden w-full space-y-6">
+            <!-- 学生顶部成就牌 -->
+            <div class="bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden">
+                <div class="absolute -top-10 -right-10 w-24 h-24 bg-brand-yellow rounded-full opacity-30"></div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-6xl animate-bounce">🦄</span>
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-kids font-bold text-gray-800">冒险者：<span id="student-portal-name">-</span></h2>
+                        <p class="text-brand-purple font-bold text-sm md:text-base">欢迎来到英语大陆！今天也要元气满满哦 🌈</p>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <div class="bg-yellow-50 border-3 border-gray-850 rounded-2xl p-3 text-center cartoon-shadow-sm">
+                        <span class="text-2xl block">⭐</span>
+                        <span class="text-xs font-bold text-gray-500">累计勋章</span>
+                        <span id="student-stars-count" class="block font-kids font-bold text-xl text-brand-yellow">0</span>
+                    </div>
+                    <div class="bg-blue-50 border-3 border-gray-850 rounded-2xl p-3 text-center cartoon-shadow-sm">
+                        <span class="text-2xl block">🎒</span>
+                        <span class="text-xs font-bold text-gray-500">完成预习</span>
+                        <span id="student-prep-count" class="block font-kids font-bold text-xl text-brand-blue">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 学生主功能 Tab 切换 -->
+            <div class="flex border-3 border-gray-850 rounded-cartoon overflow-hidden bg-gray-100 p-1 max-w-md mx-auto">
+                <button onclick="switchStudentTab('student-tab-prep')" id="btn-student-tab-prep" class="student-tab-btn flex-1 py-3 text-center rounded-2xl font-bold bg-white border-3 border-gray-850 text-gray-800 transition-all">
+                    📚 课前预习大本营
+                </button>
+                <button onclick="switchStudentTab('student-tab-summary')" id="btn-student-tab-summary" class="student-tab-btn flex-1 py-3 text-center rounded-2xl font-bold text-gray-500 hover:text-gray-700 transition-all">
+                    🏆 课后挑战加油站
+                </button>
+            </div>
+
+            <!-- 学生 课前预习 列表 -->
+            <div id="student-tab-prep" class="student-tab-content space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="student-prep-cards-grid">
+                    <!-- 卡片动态渲染 -->
+                </div>
+            </div>
+
+            <!-- 学生 课后挑战 列表 -->
+            <div id="student-tab-summary" class="student-tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="student-summary-cards-grid">
+                    <!-- 课后卡片动态渲染 -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 云端数据库与 AI 综合控制台 (已增强) -->
+    <div id="api-key-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-4 border-gray-800 rounded-cartoon p-6 max-w-lg w-full cartoon-shadow relative">
+            <button onclick="closeApiKeyModal()" class="absolute top-4 right-4 text-gray-500 hover:text-red-500">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            
+            <h3 class="text-xl font-bold text-gray-850 mb-3 flex items-center space-x-2">
+                <span>🛰️ 云端服务与 AI 引擎控制台</span>
+            </h3>
+            
+            <div class="space-y-4 max-h-[420px] overflow-y-auto pr-1 no-scrollbar text-sm font-medium">
+                <!-- AI Key设置 -->
+                <div class="p-3 bg-rose-50/50 rounded-2xl border-2 border-brand-pink/35 space-y-2">
+                    <label class="block text-xs font-bold text-gray-750 flex items-center space-x-1">
+                        <i data-lucide="key" class="w-4 h-4 text-brand-pink"></i>
+                        <span>Gemini / NotebookLM AI API Key</span>
+                    </label>
+                    <input type="password" id="settings-gemini-key" placeholder="AIzaSy..." class="w-full px-4 py-2 border-2 border-gray-850 rounded-xl focus:outline-none font-mono text-xs">
+                </div>
+
+                <!-- 数据库配置选项 (新增自定义 Firebase Config) -->
+                <div class="p-3 bg-blue-50/40 rounded-2xl border-2 border-brand-blue/35 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-xs font-bold text-gray-750 flex items-center space-x-1">
+                            <i data-lucide="database" class="w-4 h-4 text-brand-blue"></i>
+                            <span>Firebase 云数据库 Web 配置 JSON</span>
+                        </label>
+                        <button onclick="resetFirebaseConfig()" class="text-[10px] text-red-500 hover:underline">
+                            重置默认
+                        </button>
+                    </div>
+                    <textarea id="settings-firebase-config" rows="5" placeholder='{\n  "apiKey": "您的ApiKey",\n  "authDomain": "xxx.firebaseapp.com",\n  "projectId": "您的项目ID",\n  "appId": "..."\n}' class="w-full p-2.5 border-2 border-gray-850 rounded-xl focus:outline-none font-mono text-[10px] bg-white"></textarea>
+                    <p class="text-[10px] text-gray-400">贴入您申请的免费 Firebase 项目中的 JS Web Config (JSON格式)。保存后应用会自动重载建立云端连接。</p>
+                </div>
+
+                <!-- 云端连线实时诊断日志 (新增) -->
+                <div class="p-3 bg-gray-900 text-green-400 rounded-2xl border-2 border-gray-800 space-y-1.5">
+                    <div class="flex justify-between items-center text-xs font-bold text-gray-400 border-b border-gray-700 pb-1">
+                        <span>📡 魔法云端诊断日志 (Realtime Logs)</span>
+                        <button onclick="clearDiagnosticLogs()" class="text-red-400 hover:text-red-300 text-[10px]">清空</button>
+                    </div>
+                    <div id="diagnostic-log-content" class="font-mono text-[10px] max-h-24 overflow-y-auto space-y-0.5 leading-relaxed">
+                        <!-- 动态日志输出 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex space-x-2.5 mt-5">
+                <button onclick="closeApiKeyModal()" class="flex-1 py-3 rounded-xl border-3 border-gray-850 font-bold hover:bg-gray-100 text-xs text-gray-600 transition-all">关闭控制台</button>
+                <button onclick="saveApiKeyAndConfig()" class="flex-[1.5] bg-brand-yellow hover:bg-yellow-400 text-gray-850 font-bold py-3 px-4 rounded-xl border-3 border-gray-850 cartoon-shadow-sm transition-all text-xs transform active:translate-y-0.5">
+                    💾 保存配置并更新连接
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学生端 课前预习 沉浸式学习模态弹窗 -->
+    <div id="student-study-modal" class="hidden fixed inset-0 bg-brand-bg/95 z-40 overflow-y-auto p-4 md:p-8 flex flex-col items-center">
+        <!-- 弹窗顶栏 -->
+        <div class="w-full max-w-5xl flex justify-between items-center mb-6">
+            <button onclick="closeStudyModal()" class="bg-white border-3 border-gray-850 rounded-full px-4 py-2 font-bold cartoon-shadow-sm transition-all flex items-center space-x-1.5 active:translate-y-0.5">
+                <i data-lucide="arrow-left" class="w-5 h-5 text-brand-pink"></i>
+                <span>返回大厅</span>
+            </button>
+            <div class="bg-white border-3 border-gray-850 rounded-full px-5 py-2 font-bold flex items-center space-x-2">
+                <span class="text-lg">🏆</span>
+                <span class="text-sm md:text-base text-gray-700" id="study-modal-title">核心课件精读大冒险</span>
+            </div>
+            <div class="w-24"></div> <!-- 占位保持居中 -->
+        </div>
+
+        <!-- 沉浸式教学主体容器 -->
+        <div class="w-full max-w-5xl bg-white border-4 border-gray-800 rounded-cartoon p-6 cartoon-shadow flex flex-col md:flex-row gap-6">
+            <!-- 冒险挑战路线（左侧导航） -->
+            <div class="w-full md:w-56 bg-orange-50/40 border-3 border-gray-850 rounded-2xl p-4 shrink-0 flex flex-col space-y-2">
+                <h4 class="font-bold text-sm text-gray-500 mb-2">🎈 英语冒险挑战任务</h4>
+                <button onclick="switchStudyStep('step-grammar')" id="btn-step-grammar" class="study-step-btn w-full text-left py-2.5 px-3 rounded-xl font-bold bg-brand-yellow border-2 border-gray-850 flex items-center space-x-2">
+                    <span>📖 魔法语法点</span>
+                </button>
+                <button onclick="switchStudyStep('step-vocab')" id="btn-step-vocab" class="study-step-btn w-full text-left py-2.5 px-3 rounded-xl font-bold border-2 border-transparent hover:bg-gray-100 flex items-center space-x-2 text-gray-600">
+                    <span>🔤 30个核心单词</span>
+                </button>
+                <button onclick="switchStudyStep('step-phrase')" id="btn-step-phrase" class="study-step-btn w-full text-left py-2.5 px-3 rounded-xl font-bold border-2 border-transparent hover:bg-gray-100 flex items-center space-x-2 text-gray-600">
+                    <span>🎗️ 10个金牌短语</span>
+                </button>
+                <button onclick="switchStudyStep('step-quiz')" id="btn-step-quiz" class="study-step-btn w-full text-left py-2.5 px-3 rounded-xl font-bold border-2 border-transparent hover:bg-gray-100 flex items-center space-x-2 text-gray-600">
+                    <span>⚔️ 30道冲关测试</span>
+                </button>
+                <button onclick="switchStudyStep('step-reading')" id="btn-step-reading" class="study-step-btn w-full text-left py-2.5 px-3 rounded-xl font-bold border-2 border-transparent hover:bg-gray-100 flex items-center space-x-2 text-gray-600">
+                    <span>🔗 拓展知识森林</span>
+                </button>
+            </div>
+
+            <!-- 主内容展现区 -->
+            <div class="flex-grow min-h-[400px]">
+                <!-- Step 1: 语法点 -->
+                <div id="study-step-grammar" class="study-step-panel space-y-4">
+                    <div class="flex justify-between items-center border-b-2 border-dashed border-gray-200 pb-3">
+                        <h4 class="text-xl font-bold text-gray-800">📖 魔法语法知识宝袋</h4>
+                        <button onclick="speakText('语法精讲开始啦')" class="text-xs text-brand-blue font-bold flex items-center space-x-1 hover:underline">
+                            <i data-lucide="volume-2" class="w-4 h-4"></i>
+                            <span>语音助手</span>
+                        </button>
+                    </div>
+                    <!-- 语法点文本区域 -->
+                    <div id="study-grammar-content" class="text-base text-gray-700 leading-relaxed bg-brand-bg p-5 border-2 border-gray-800 rounded-2xl min-h-[300px] whitespace-pre-wrap"></div>
+                </div>
+
+                <!-- Step 2: 30个单词翻牌子 -->
+                <div id="study-step-vocab" class="study-step-panel hidden space-y-4">
+                    <div class="flex justify-between items-center border-b-2 border-dashed border-gray-200 pb-3">
+                        <h4 class="text-xl font-bold text-gray-800">🔤 30个魔法单词大通关</h4>
+                        <span class="text-xs bg-brand-pink text-white px-2 py-1 rounded-full font-bold">点击卡片发音/翻转看释义</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[450px] overflow-y-auto pr-2 no-scrollbar" id="study-vocab-grid"></div>
+                </div>
+
+                <!-- Step 3: 10个短语卡 -->
+                <div id="study-step-phrase" class="study-step-panel hidden space-y-4">
+                    <div class="flex justify-between items-center border-b-2 border-dashed border-gray-200 pb-3">
+                        <h4 class="text-xl font-bold text-gray-800">🎗️ 10个金牌口语常用短语</h4>
+                        <span class="text-xs bg-brand-blue text-white px-2 py-1 rounded-full font-bold">听音跟读、趣味翻译</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[450px] overflow-y-auto pr-2" id="study-phrase-grid"></div>
+                </div>
+
+                <!-- Step 4: 30道冲关测试题 -->
+                <div id="study-step-quiz" class="study-step-panel hidden space-y-4">
+                    <div class="flex justify-between items-center border-b-2 border-dashed border-gray-200 pb-3">
+                        <h4 class="text-xl font-bold text-gray-800">⚔️ 30道知识点巅峰冲关</h4>
+                        <div class="bg-brand-pink/10 border-2 border-brand-pink text-brand-pink font-bold text-xs px-3 py-1 rounded-full" id="quiz-progress-text">
+                            当前得分：0 分
+                        </div>
+                    </div>
+                    <div class="space-y-6 max-h-[420px] overflow-y-auto pr-2" id="study-quiz-list"></div>
+                </div>
+
+                <!-- Step 5: 拓展阅读 -->
+                <div id="study-step-reading" class="study-step-panel hidden space-y-4">
+                    <div class="flex justify-between items-center border-b-2 border-dashed border-gray-200 pb-3">
+                        <h4 class="text-xl font-bold text-gray-800">🌳 探索知识奇幻森林</h4>
+                        <span class="text-xs text-gray-500 font-bold">点击链接，开启你的阅读视野！</span>
+                    </div>
+                    <div class="space-y-4 min-h-[300px] flex flex-col justify-between">
+                        <div class="space-y-3" id="study-reading-list"></div>
+                        <div class="flex flex-col items-center pt-6">
+                            <span class="text-4xl animate-pulse mb-2">🎁</span>
+                            <button onclick="handlePreClassCheckInSubmit()" class="bg-brand-green text-white font-bold text-lg py-4 px-12 rounded-full border-4 border-gray-850 cartoon-shadow transition-all transform active:translate-y-1 flex items-center space-x-2">
+                                <span>已读完并对本节课课前预习打卡!</span>
+                                <i data-lucide="check-circle" class="w-6 h-6"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="w-full text-center py-6 text-xs text-gray-400 font-medium">
+        <p>© 2026 Shadow老师英语魔法学院 | 在梦幻中收获知识与爱 🦁</p>
+    </footer>
+
+    <!-- Firebase SDK / APP Core Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Diagnostic Logger
+        window.logMsg = function(msg, isError = false) {
+            const timeStr = new Date().toLocaleTimeString();
+            const logContent = document.getElementById("diagnostic-log-content");
+            const colorClass = isError ? "text-red-400 font-bold" : "text-green-400";
+            if (logContent) {
+                logContent.innerHTML += `<div class="${colorClass}">[${timeStr}] ${msg}</div>`;
+                logContent.scrollTop = logContent.scrollHeight;
+            }
+            if (isError) {
+                document.getElementById("db-status-dot").className = "w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse";
+                document.getElementById("db-status-text").innerText = "连线失败";
+            }
+        };
+
+        window.clearDiagnosticLogs = function() {
+            const logContent = document.getElementById("diagnostic-log-content");
+            if (logContent) logContent.innerHTML = "";
+        };
+
+        // Initialize Firebase Configuration (Added local fallback logic for GitHub pages connection settings)
+        let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyDummyKeyForGithubPageDemoOnly",
+            authDomain: "dummy-domain.firebaseapp.com",
+            projectId: "dummy-project",
+            storageBucket: "dummy-bucket.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456:web:abcd"
+        };
+
+        const customConfigStr = localStorage.getItem("shadow_custom_firebase_config");
+        if (customConfigStr) {
+            try {
+                firebaseConfig = JSON.parse(customConfigStr);
+                window.logMsg("⚡ 发现自定义云端数据库配置，正在启动连接...");
+                document.getElementById("settings-firebase-config").value = customConfigStr;
+            } catch (e) {
+                window.logMsg("⚠️ 自定义配置解析失败，退回默认状态！", true);
+            }
+        } else {
+            window.logMsg("ℹ️ 运行于默认数据库环境中...");
+        }
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'shadow-teacher-app';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Try Initializing Database Engines safely to prevent 404/Initialization crash
+        let app, auth, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            window.logMsg("🟢 数据库引擎初始化成功，准备握手云端...");
+        } catch (e) {
+            window.logMsg(`🔴 引擎初始化异常: ${e.message}`, true);
+        }
+
+        // State Management
+        let currentUser = null;
+        let userRole = null; // 'teacher' | 'student'
+        let currentStudentProfile = null; // Stored DB info for current active student
+        let activeTeacherTab = 'tab-prep';
+        let activePreviewTab = 'subtab-grammar';
+        let activeStudentTab = 'student-tab-prep';
+        let activeStudyStep = 'step-grammar';
+
+        // Memory Store
+        let studentsList = [];
+        let prepAssignments = [];
+        let classSummaries = [];
+        let systemSettings = { geminiKey: "" };
+
+        // Real-time parsed textbook PDF references
+        let selectedPdfFile = null;
+        let extractedPdfText = "";
+
+        // Memory for the AI generated assets waiting to edit / publish
+        let activeDraftPrep = {
+            title: "新课预习：未命名主题",
+            grammar: "在这里输入语法点...",
+            vocabulary: Array.from({length: 30}, (_, i) => ({
+                id: i+1, word: `Word${i+1}`, phonetic: `['wɜːd${i+1}]`, translation: `生词释义${i+1}`, contextSentence: "This is the sentence from textbook.", extraSentence: "And here is a beautifully curated alternative usage example."
+            })),
+            phrases: Array.from({length: 10}, (_, i) => ({
+                id: i+1, phrase: `Phrase ${i+1}`, phonetic: `['freɪz ${i+1}]`, translation: `短语意思${i+1}`, contextSentence: "Original textbook context showing phrase.", extraSentence: "Alternative sentence for practicing English phrase."
+            })),
+            quiz: Array.from({length: 30}, (_, i) => ({
+                id: i+1, question: `第${i+1}道测试挑战题：Which word completes this sentence correctly?`, options: ["A. correct", "B. wrong", "C. bad", "D. empty"], answer: "A"
+            })),
+            readingLinks: Array.from({length: 5}, (_, i) => ({
+                id: i+1, title: `精选美文拓展阅读 ${i+1}`, url: "https://shadow-academy-learning.com"
+            }))
+        };
+
+        let currentReviewingPrep = null; // The prep assignment loaded in student immersive study
+
+        // 1. Authentication initialization on load (RULE 3)
+        window.onload = async () => {
+            lucide.createIcons();
+            showToast("🏰 正在建立魔法通道...", "✨");
+
+            const initAuth = async () => {
+                if (!auth) return;
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    window.logMsg("🔒 匿名安全身份认证成功。");
+                    document.getElementById("db-status-dot").className = "w-2.5 h-2.5 rounded-full bg-green-500";
+                    document.getElementById("db-status-text").innerText = "已连通云端";
+                } catch (e) {
+                    console.error("Firebase auth error, retrying:", e);
+                    window.logMsg(`❌ 云端认证连线异常: ${e.message}。您可以配置自己的专属 Web JSON 数据。`, true);
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (err) {
+                        showToast("云端无法连接，正以演示/离线模式加载！", "❌");
+                    }
+                }
+            };
+
+            await initAuth();
+
+            if (auth) {
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    if (user) {
+                        startSyncingData();
+                    }
+                });
+            }
+        };
+
+        // 2. Real-time Firebase listeners (RULE 1 & RULE 2)
+        function startSyncingData() {
+            if (!currentUser || !db) return;
+
+            const path_students = collection(db, 'artifacts', appId, 'public', 'data', 'students');
+            const path_prep = collection(db, 'artifacts', appId, 'public', 'data', 'pre_class_prep');
+            const path_summary = collection(db, 'artifacts', appId, 'public', 'data', 'post_class_summary');
+            const path_settings = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+
+            // Listening to students
+            onSnapshot(path_students, (snapshot) => {
+                studentsList = [];
+                snapshot.forEach(doc => {
+                    studentsList.push({ id: doc.id, ...doc.data() });
+                });
+                renderStudentsList();
+                updateSelectors();
+                window.logMsg(`📡 同步名册: 已同步 ${studentsList.length} 名学生记录。`);
+            }, (err) => {
+                window.logMsg(`⚠️ 名册同步拒绝: 权限不足或配置不正确。`, true);
+            });
+
+            // Listening to Pre-class Preps
+            onSnapshot(path_prep, (snapshot) => {
+                prepAssignments = [];
+                snapshot.forEach(doc => {
+                    prepAssignments.push({ id: doc.id, ...doc.data() });
+                });
+                renderPrepList();
+                renderStudentPrepDashboard();
+                window.logMsg(`📡 同步课件: 已载入 ${prepAssignments.length} 个预习包。`);
+            }, (err) => {
+                window.logMsg(`⚠️ 课件同步拒绝: ${err.message}`, true);
+            });
+
+            // Listening to Post-class Summaries
+            onSnapshot(path_summary, (snapshot) => {
+                classSummaries = [];
+                snapshot.forEach(doc => {
+                    classSummaries.push({ id: doc.id, ...doc.data() });
+                });
+                renderSummaryList();
+                renderStudentSummaryDashboard();
+                window.logMsg(`📡 同步报告: 已载入 ${classSummaries.length} 份课后总结。`);
+            }, (err) => {
+                window.logMsg(`⚠️ 报告同步拒绝: ${err.message}`, true);
+            });
+
+            // Get Settings
+            getDoc(path_settings).then((docSnap) => {
+                if (docSnap.exists()) {
+                    systemSettings = docSnap.data();
+                    document.getElementById('settings-gemini-key').value = systemSettings.geminiKey || "";
+                    window.logMsg("🔑 AI 服务密钥已同步完成。");
+                }
+            }).catch(e => {
+                window.logMsg("ℹ️ 离线演示，将采用单回话本地逻辑。", false);
+            });
+        }
+
+        // Global Alert/Notification Utility
+        function showToast(text, icon = "🎈") {
+            const toast = document.getElementById("toast");
+            document.getElementById("toast-icon").innerText = icon;
+            document.getElementById("toast-text").innerText = text;
+            toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-100 scale-100";
+            setTimeout(() => {
+                toast.className = "fixed top-5 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 scale-95";
+            }, 3000);
+        }
+
+        // --- 3. Authentication & Tab Controllers ---
+        window.switchLoginRole = function(role) {
+            const btnStudent = document.getElementById("btn-role-student");
+            const btnTeacher = document.getElementById("btn-role-teacher");
+            if (role === 'student') {
+                btnStudent.className = "flex-1 py-3 text-center rounded-xl font-bold bg-white border-3 border-gray-800 text-gray-700 transition-all";
+                btnTeacher.className = "flex-1 py-3 text-center rounded-xl font-bold text-gray-500 hover:text-gray-700 transition-all border-3 border-transparent";
+            } else {
+                btnTeacher.className = "flex-1 py-3 text-center rounded-xl font-bold bg-white border-3 border-gray-800 text-gray-700 transition-all";
+                btnStudent.className = "flex-1 py-3 text-center rounded-xl font-bold text-gray-500 hover:text-gray-700 transition-all border-3 border-transparent";
+            }
+        };
+
+        window.handleLogin = function(event) {
+            event.preventDefault();
+            const isTeacher = document.getElementById("btn-role-teacher").classList.contains("bg-white");
+            const u = document.getElementById("login-username").value.trim();
+            const p = document.getElementById("login-password").value.trim();
+
+            if (isTeacher) {
+                if (u === "Shadow" && p === "900908") {
+                    userRole = 'teacher';
+                    setupPortalView();
+                } else {
+                    showToast("Shadow老师密码或用户名不正确哦！", "❌");
+                }
+            } else {
+                // Validate student
+                const student = studentsList.find(s => s.username === u && s.password === p);
+                if (student) {
+                    // Check expiry date
+                    const expiryTime = new Date(student.expiryDate).getTime();
+                    const now = new Date().getTime();
+                    if (expiryTime < now) {
+                        showToast("您的魔法学徒卡到期啦，请联系Shadow老师续期！", "🔒");
+                        return;
+                    }
+                    userRole = 'student';
+                    currentStudentProfile = student;
+                    setupPortalView();
+                } else {
+                    showToast("没有找到该学徒账号，或密码错误，请联系老师查询！", "❌");
+                }
+            }
+        };
+
+        function setupPortalView() {
+            document.getElementById("view-login").classList.add("hidden");
+            const headerInfo = document.getElementById("user-header-info");
+            headerInfo.classList.remove("hidden");
+            
+            if (userRole === 'teacher') {
+                document.getElementById("view-teacher").classList.remove("hidden");
+                document.getElementById("header-username").innerText = "Shadow";
+                document.getElementById("header-avatar").innerText = "👩‍🏫";
+                document.getElementById("header-role").innerText = "教师端";
+                document.getElementById("header-role").className = "bg-brand-purple text-white text-xs px-2 py-0.5 rounded-full font-bold";
+                switchTeacherTab('tab-prep');
+                showToast("您好，Shadow老师！快来看看今天的工作吧 ✨", "🎉");
+            } else {
+                document.getElementById("view-student").classList.remove("hidden");
+                document.getElementById("header-username").innerText = currentStudentProfile.username;
+                document.getElementById("header-avatar").innerText = "🦄";
+                document.getElementById("header-role").innerText = "学徒";
+                document.getElementById("header-role").className = "bg-brand-blue text-white text-xs px-2 py-0.5 rounded-full font-bold";
+                document.getElementById("student-portal-name").innerText = currentStudentProfile.username;
+                switchStudentTab('student-tab-prep');
+                showToast(`冲锋！${currentStudentProfile.username} 今天也要加油鸭 ⭐`, "🪄");
+            }
+            lucide.createIcons();
+        }
+
+        window.logout = function() {
+            currentUser = null;
+            userRole = null;
+            currentStudentProfile = null;
+            document.getElementById("user-header-info").classList.add("hidden");
+            document.getElementById("view-teacher").classList.add("hidden");
+            document.getElementById("view-student").classList.add("hidden");
+            document.getElementById("student-study-modal").classList.add("hidden");
+            document.getElementById("view-login").classList.remove("hidden");
+            document.getElementById("login-password").value = "";
+            showToast("成功返回登录大厅！", "🏡");
+        };
+
+        // Tab Switching inside teacher view
+        window.switchTeacherTab = function(tabId) {
+            activeTeacherTab = tabId;
+
+            // 🌟 解决页面切换跳变：自动将视窗平滑滚动至教师内容卡片的顶端
+            const teacherView = document.getElementById("view-teacher");
+            if (teacherView) {
+                const elementTop = teacherView.getBoundingClientRect().top + window.scrollY - 16;
+                window.scrollTo({ top: elementTop, behavior: 'smooth' });
+            }
+
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+            
+            document.querySelectorAll(".tab-btn").forEach(btn => {
+                // 恢复默认未激活样式类
+                btn.classList.remove("bg-brand-yellow", "border-gray-800", "text-gray-800");
+                btn.classList.add("bg-transparent", "border-transparent", "text-gray-600", "hover:border-gray-800", "hover:bg-orange-50/50");
+            });
+
+            // 获取目前选中的按钮并添加激活高亮类
+            const targetBtnId = `btn-teacher-${tabId.replace('tab-', '')}`;
+            const activeBtn = document.getElementById(targetBtnId);
+            if (activeBtn) {
+                activeBtn.classList.remove("bg-transparent", "border-transparent", "text-gray-600", "hover:border-gray-800", "hover:bg-orange-50/50");
+                activeBtn.classList.add("bg-brand-yellow", "border-gray-800", "text-gray-800");
+            }
+
+            document.getElementById(`teacher-${tabId}`).classList.remove("hidden");
+            lucide.createIcons();
+        };
+
+        // Tab Switching inside student view
+        window.switchStudentTab = function(tabId) {
+            activeStudentTab = tabId;
+            document.querySelectorAll(".student-tab-content").forEach(el => el.classList.add("hidden"));
+            document.querySelectorAll(".student-tab-btn").forEach(btn => {
+                btn.className = "student-tab-btn flex-1 py-3 text-center rounded-2xl font-bold text-gray-500 hover:text-gray-700 transition-all";
+            });
+
+            if (tabId === 'student-tab-prep') {
+                document.getElementById("student-tab-prep").classList.remove("hidden");
+                document.getElementById("btn-student-tab-prep").className = "student-tab-btn flex-1 py-3 text-center rounded-2xl font-bold bg-white border-3 border-gray-850 text-gray-800 transition-all";
+            } else if (tabId === 'student-tab-summary') {
+                document.getElementById("student-tab-summary").classList.remove("hidden");
+                document.getElementById("btn-student-tab-summary").className = "student-tab-btn flex-1 py-3 text-center rounded-2xl font-bold bg-white border-3 border-gray-850 text-gray-800 transition-all";
+            }
+            renderStudentPrepDashboard();
+            renderStudentSummaryDashboard();
+        };
+
+
+        // --- 4. Student Management Tab CRUD Logic ---
+        window.handleStudentFormSubmit = async function(event) {
+            event.preventDefault();
+            const sid = document.getElementById("edit-student-id").value;
+            const u = document.getElementById("student-username").value.trim();
+            const p = document.getElementById("student-password").value.trim();
+            const exp = document.getElementById("student-expiry").value;
+
+            if (!currentUser) return;
+
+            const studentData = {
+                username: u,
+                password: p,
+                expiryDate: exp,
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                if (sid) {
+                    const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', sid);
+                    await updateDoc(studentRef, studentData);
+                    showToast("更新学生档案成功！", "✅");
+                } else {
+                    // Check duplicate username
+                    if (studentsList.some(s => s.username.toLowerCase() === u.toLowerCase())) {
+                        showToast("用户名已经被注册啦，换一个吧！", "⚠️");
+                        return;
+                    }
+                    const studentsColl = collection(db, 'artifacts', appId, 'public', 'data', 'students');
+                    await addDoc(studentsColl, studentData);
+                    showToast("成功注册新星学徒！", "🎉");
+                }
+                resetStudentForm();
+            } catch (err) {
+                console.error(err);
+                showToast("保存学生账号失败，请重试！", "❌");
+                window.logMsg(`❌ 注册学徒失败: ${err.message}`, true);
+            }
+        };
+
+        window.editStudent = function(id) {
+            const s = studentsList.find(st => st.id === id);
+            if (!s) return;
+            document.getElementById("edit-student-id").value = s.id;
+            document.getElementById("student-username").value = s.username;
+            document.getElementById("student-password").value = s.password;
+            document.getElementById("student-expiry").value = s.expiryDate;
+            
+            document.getElementById("student-form-title").innerHTML = "<span>✏️ 编辑学生档案</span>";
+            document.getElementById("btn-cancel-student").classList.remove("hidden");
+        };
+
+        window.deleteStudent = async function(id) {
+            if (!confirm("确定要注销这个学生吗？注销后他将无法登录魔法课堂！")) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
+                await deleteDoc(docRef);
+                showToast("已成功移出在读名册", "🗑️");
+            } catch (e) {
+                showToast("删除失败，请稍后重试", "❌");
+                window.logMsg(`❌ 移除学徒失败: ${e.message}`, true);
+            }
+        };
+
+        window.resetStudentForm = function() {
+            document.getElementById("edit-student-id").value = "";
+            document.getElementById("student-username").value = "";
+            document.getElementById("student-password").value = "";
+            document.getElementById("student-expiry").value = "";
+            document.getElementById("student-form-title").innerHTML = "<span>➕ 注册新学生账号</span>";
+            document.getElementById("btn-cancel-student").classList.add("hidden");
+        };
+
+        function renderStudentsList() {
+            const tbody = document.getElementById("student-list-tbody");
+            tbody.innerHTML = "";
+            if (studentsList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400 font-bold">还没有学生入学哦，快右边注册一个吧！🪄</td></tr>`;
+                return;
+            }
+            studentsList.forEach(s => {
+                const now = new Date().getTime();
+                const exp = new Date(s.expiryDate).getTime();
+                const isExpired = exp < now;
+                const statusTag = isExpired ? 
+                    `<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs font-bold">已到期</span>` : 
+                    `<span class="bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-xs font-bold">学习中</span>`;
+                
+                tbody.innerHTML += `
+                    <tr class="hover:bg-orange-50/20 transition-all">
+                        <td class="p-3 font-bold">${s.username}</td>
+                        <td class="p-3 font-mono text-xs text-gray-500">${s.password}</td>
+                        <td class="p-3 text-xs text-gray-400">${new Date(s.createdAt || s.expiryDate).toLocaleDateString()}</td>
+                        <td class="p-3 text-xs font-bold">${s.expiryDate}</td>
+                        <td class="p-3">${statusTag}</td>
+                        <td class="p-3 text-right space-x-1">
+                            <button onclick="editStudent('${s.id}')" class="bg-amber-100 text-amber-700 hover:bg-amber-200 px-2.5 py-1.5 rounded-xl border-2 border-gray-800 font-bold text-xs">编辑</button>
+                            <button onclick="deleteStudent('${s.id}')" class="bg-red-100 text-red-700 hover:bg-red-200 px-2.5 py-1.5 rounded-xl border-2 border-gray-800 font-bold text-xs">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateSelectors() {
+            if (!document.getElementById("summary-student")) return;
+            const select = document.getElementById("summary-student");
+            select.innerHTML = `<option value="">-- 请选择上课学徒 --</option>`;
+            studentsList.forEach(s => {
+                select.innerHTML += `<option value="${s.id}">${s.username}</option>`;
+            });
+
+            const checkboxContainer = document.getElementById("prep-student-selector");
+            checkboxContainer.innerHTML = "";
+            if (studentsList.length === 0) {
+                checkboxContainer.innerHTML = `<span class="text-xs text-gray-400 font-bold">没有可用学生</span>`;
+                return;
+            }
+            studentsList.forEach(s => {
+                checkboxContainer.innerHTML += `
+                    <label class="inline-flex items-center space-x-1.5 bg-white border-2 border-gray-300 rounded-lg px-2 py-1 text-xs cursor-pointer hover:bg-orange-50 font-bold">
+                        <input type="checkbox" name="prep-students" value="${s.id}" class="rounded text-brand-blue border-gray-300">
+                        <span>${s.username}</span>
+                    </label>
+                `;
+            });
+        }
+
+        // --- 5. Textbook PDF parser (PDF.js Text Extractor - 已重构实现“上传后手动点击触发提取”) ---
+        window.onPdfFileSelected = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // 仅仅做选择和文件名提示，不立即解析
+            selectedPdfFile = file;
+            document.getElementById("pdf-file-name").innerText = `📄 已选择: ${file.name} (等待点击解析)`;
+            document.getElementById("btn-parse-pdf").classList.remove("hidden"); // 显示提取按钮
+            showToast("文件已备好！配置页码后，请点击下方蓝色提取按钮开始解析 ⚡", "📎");
+            window.logMsg(`📎 已选定课件文件: ${file.name}，处于待提取状态。`);
+        };
+
+        window.startPdfParsing = async function() {
+            if (!selectedPdfFile) {
+                showToast("请先选择 PDF 文件哦！", "⚠️");
+                return;
+            }
+
+            const useOcr = document.getElementById("pdf-ocr-enable").checked;
+            const btn = document.getElementById("btn-parse-pdf");
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<span class="animate-spin text-sm mr-1.5">💫</span><span>正在努力翻页提取中...</span>`;
+            btn.disabled = true;
+
+            showToast(useOcr ? "正在启动深度图片扫描引擎，请耐心等待..." : "正在解析您的课本文件，请稍候...", "📖");
+            window.logMsg(`🔄 开始解析文件: ${selectedPdfFile.name} (OCR模式: ${useOcr ? '开启' : '关闭'})`);
+
+            try {
+                const reader = new FileReader();
+                reader.onload = async function() {
+                    try {
+                        const typedarray = new Uint8Array(this.result);
+                        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+                        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+                        
+                        const pdf = await pdfjsLib.getDocument({data: typedarray}).promise;
+                        
+                        let startPage = parseInt(document.getElementById("pdf-start-page").value) || 1;
+                        let endPage = parseInt(document.getElementById("pdf-end-page").value) || pdf.numPages;
+                        
+                        if (startPage < 1) startPage = 1;
+                        if (endPage > pdf.numPages) endPage = pdf.numPages;
+                        if (startPage > endPage) {
+                            const temp = startPage;
+                            startPage = endPage;
+                            endPage = temp;
+                        }
+
+                        let fullExtractedText = "";
+                        for (let i = startPage; i <= endPage; i++) {
+                            const page = await pdf.getPage(i);
+                            let pageText = "";
+
+                            if (useOcr) {
+                                window.logMsg(`📸 正在扫描识别第 ${i} 页图片...`);
+                                btn.innerHTML = `<span class="animate-spin text-sm mr-1.5">💫</span><span>正在扫描第 ${i} 页图片...</span>`;
+                                
+                                // 渲染 PDF 页面到 Canvas 以进行高精度 OCR 识别
+                                const viewport = page.getViewport({ scale: 2.0 }); 
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                canvas.height = viewport.height;
+                                canvas.width = viewport.width;
+                                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+                                // 调用 Tesseract.js 进行中英双语识别
+                                const result = await Tesseract.recognize(canvas, 'eng+chi_sim', {
+                                    logger: m => {
+                                        if(m.status === 'recognizing text' && m.progress % 0.2 < 0.01) {
+                                            console.log(`Page ${i} OCR Progress: ${(m.progress * 100).toFixed(0)}%`);
+                                        }
+                                    }
+                                });
+                                pageText = result.data.text;
+                            } else {
+                                // 常规底层文本提取 (极速模式)
+                                const textContent = await page.getTextContent();
+                                pageText = textContent.items.map(item => item.str).join(" ");
+                            }
+
+                            fullExtractedText += `[第 ${i} 页]\n` + pageText + "\n\n";
+                        }
+
+                        extractedPdfText = fullExtractedText;
+                        document.getElementById("lesson-raw-text").value = extractedPdfText;
+                        document.getElementById("pdf-file-name").innerText = `📚 ${selectedPdfFile.name} (第 ${startPage}-${endPage} 页提取完毕!)`;
+                        
+                        btn.classList.add("hidden"); // 成功后隐藏按钮
+                        showToast(`完美解析成功！已提取 ${endPage - startPage + 1} 页的教材内容`, "✨");
+                        window.logMsg(`🟢 PDF 解析完毕，成功提取 ${endPage - startPage + 1} 页文本。`);
+                    } catch (innerErr) {
+                        console.error(innerErr);
+                        showToast("提取失败，请重试或检查页码范围", "❌");
+                        window.logMsg(`🔴 提取异常: ${innerErr.message}`, true);
+                    } finally {
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                    }
+                };
+                reader.readAsArrayBuffer(selectedPdfFile);
+            } catch (err) {
+                console.error("PDF extraction error: ", err);
+                showToast("教材解析失败，请直接复制文本到输入框中生成哦！", "⚠️");
+                window.logMsg(`🔴 文件解析读取失败: ${err.message}`, true);
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        };
+
+        // --- 6. AI Generation with Gemini 2.5 Flash ---
+        window.openApiKeyModal = function() {
+            document.getElementById("api-key-modal").classList.remove("hidden");
+        };
+        window.closeApiKeyModal = function() {
+            document.getElementById("api-key-modal").classList.add("hidden");
+        };
+
+        // 云配置与 AI Key 综合保存
+        window.saveApiKeyAndConfig = async function() {
+            const key = document.getElementById("settings-gemini-key").value.trim();
+            const rawFirebaseConfig = document.getElementById("settings-firebase-config").value.trim();
+
+            // 1. 保存 AI 密钥
+            try {
+                if (db) {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+                    await setDoc(docRef, { geminiKey: key });
+                }
+                systemSettings.geminiKey = key;
+            } catch (err) {
+                window.logMsg(`⚠️ AI 密钥未保存到云端（正在使用默认演示库状态）。`);
+            }
+
+            // 2. 验证并保存 Firebase 数据库 JSON 到本地覆盖
+            if (rawFirebaseConfig) {
+                try {
+                    const parsed = JSON.parse(rawFirebaseConfig);
+                    if (!parsed.apiKey || !parsed.projectId) {
+                        throw new Error("JSON 格式虽然合法，但缺少必要的 apiKey 或 projectId 键值。");
+                    }
+                    localStorage.setItem("shadow_custom_firebase_config", rawFirebaseConfig);
+                    showToast("💾 配置成功，1.5秒后将重载应用并启用新配置...", "🔐");
+                    window.logMsg("💾 已更新云数据库配置。正在为您自动安全重载连线...");
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } catch (e) {
+                    showToast(`JSON 配置格式错误: ${e.message}`, "❌");
+                    window.logMsg(`🔴 数据库配置保存失败: ${e.message}`, true);
+                }
+            } else {
+                // 如果为空，清空自定义配置，重归演示状态
+                localStorage.removeItem("shadow_custom_firebase_config");
+                showToast("配置保存成功！当前使用默认配置环境。", "✨");
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        };
+
+        // 重置配置方法
+        window.resetFirebaseConfig = function() {
+            localStorage.removeItem("shadow_custom_firebase_config");
+            showToast("正在重置为初始网络连线状态...", "🔄");
+            window.logMsg("🔄 清理自定义设置，重置默认。");
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        };
+
+        // 🪄 一键智能生成教案
+        window.triggerAiGeneration = async function() {
+            const sourceText = document.getElementById("lesson-raw-text").value.trim();
+            if (!sourceText) {
+                showToast("老师，请先上传PDF并提取，或者贴入课本原文哦！", "⚠️");
+                return;
+            }
+
+            // 🌟 按照平台标准，设置 const apiKey = "" (空字符串) 触发平台后台透明拦截与 API Key 自动安全注入，彻底规避 404
+            const apiKey = "";
+
+            showToast("正在通过魔法智慧(AI)研读课件，这大约需要30秒...", "🪄");
+            window.logMsg("🪄 已发起 AI 精细研读课件指令...");
+            
+            // 为中小学生英语专门优化的提示词
+            const systemPrompt = `You are shadow-teacher-bot, an elite children's English teaching assistant generator. You generate kid-friendly, playful, structured course assets in a strict JSON format based on the source text provided. 
+            All translations must be simple for primary/middle school kids.
+            Return ONLY a valid JSON object matching the requested schema. No conversational fillers.`;
+
+            const userPrompt = `Analyze this textbook content:
+            """
+            ${sourceText.substring(0, 8000)}
+            """
+            
+            Based on it, construct:
+            1. title: "新课预习: [A fun creative title based on content]"
+            2. grammar: A beautifully styled markdown section detailing 3 key grammar rules, with emojis and simple fun explanations.
+            3. vocabulary: 30 target words related to the source. Each word must have: word, phonetic (IPA), translation (Chinese), contextSentence (example from the source or custom if missing), and extraSentence (a simple children-friendly alternative practice sentence).
+            4. phrases: 10 useful expressions / short phrases with: phrase, phonetic, translation (Chinese), contextSentence, extraSentence.
+            5. quiz: 30 multiple choice questions testing the vocabulary, phrases and grammar of this text. Format: question, options (Array of 4), answer ("A", "B", "C" or "D").
+            6. readingLinks: 5 relevant reading topics with title, and simulation url format (e.g., "https://english-fun-reading.com/kid/topic-1").
+            
+            JSON schema:
+            {
+              "title": "...",
+              "grammar": "...",
+              "vocabulary": [ {"id": 1, "word": "...", "phonetic": "...", "translation": "...", "contextSentence": "...", "extraSentence": "..."} ],
+              "phrases": [ {"id": 1, "phrase": "...", "phonetic": "...", "translation": "...", "contextSentence": "...", "extraSentence": "..."} ],
+              "quiz": [ {"id": 1, "question": "...", "options": ["A. ...", "B. ...", "C. ...", "D. ..."], "answer": "A"} ],
+              "readingLinks": [ {"id": 1, "title": "...", "url": "..."} ]
+            }
+            Ensure vocabulary has exactly 30 items, phrases has exactly 10, quiz has exactly 30, and readingLinks has exactly 5. Make all language lively, cheerful, children-friendly. Use emojis.`;
+
+            // UI 载入动效
+            const btn = document.querySelector("button[onclick='triggerAiGeneration()']");
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<span class="animate-spin text-2xl mr-2">💫</span><span>魔法研读中...</span>`;
+            btn.disabled = true;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: userPrompt }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    generationConfig: {
+                        responseMimeType: "application/json"
+                    }
+                })
+            };
+
+            // 指数退避算法，保障即使云端压力过大或网络丢包也能顺滑重试
+            async function fetchWithBackoff(fetchUrl, fetchOptions, retries = 5, delay = 1000) {
+                try {
+                    const response = await fetch(fetchUrl, fetchOptions);
+                    if (response.status === 429 || response.status >= 500) {
+                        if (retries > 0) {
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            return fetchWithBackoff(fetchUrl, fetchOptions, retries - 1, delay * 2);
+                        }
+                    }
+                    return response;
+                } catch (error) {
+                    if (retries > 0) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return fetchWithBackoff(fetchUrl, fetchOptions, retries - 1, delay * 2);
+                    }
+                    throw error;
+                }
+            }
+
+            try {
+                const response = await fetchWithBackoff(url, options);
+
+                if (!response.ok) {
+                    throw new Error(`API 返回状态 ${response.status}`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) throw new Error("接收到的 AI 响应文本为空。");
+
+                // 解析干净的 JSON 数据并赋给草稿
+                const parsedResult = JSON.parse(text);
+                activeDraftPrep = parsedResult;
+
+                // 载入草稿到老师编辑区
+                loadActiveDraftIntoEditor();
+
+                // 显示并滑动至编辑面板
+                document.getElementById("ai-result-panel").classList.remove("hidden");
+                document.getElementById("ai-result-panel").scrollIntoView({ behavior: 'smooth' });
+                showToast("✨ AI 课件一键魔法生成成功！赶紧校准修改吧！", "🎉");
+                window.logMsg("🟢 AI 教案生成完毕并成功渲染至编辑面板。");
+
+            } catch (err) {
+                console.error("Gemini invocation failed:", err);
+                showToast(`哎呀，魔法AI出错啦 (${err.message})，请稍后重新点击生成！`, "❌");
+                window.logMsg(`🔴 AI 生成异常: ${err.message}`, true);
+            } finally {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        };
+
+        // Populate dynamic lists inside editor interface
+        function loadActiveDraftIntoEditor() {
+            document.getElementById("prep-assignment-title").value = activeDraftPrep.title;
+            document.getElementById("edit-grammar-text").value = activeDraftPrep.grammar;
+
+            // Load Vocabs
+            const vTable = document.getElementById("vocab-table-body");
+            vTable.innerHTML = "";
+            activeDraftPrep.vocabulary.forEach((v, index) => {
+                vTable.innerHTML += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-2 border-r border-b text-center font-bold">${index + 1}</td>
+                        <td class="p-2 border-r border-b content-editable" contenteditable="true" onblur="updateDraftItem('vocabulary', ${index}, 'word', this.innerText)">${v.word}</td>
+                        <td class="p-2 border-r border-b content-editable font-mono" contenteditable="true" onblur="updateDraftItem('vocabulary', ${index}, 'phonetic', this.innerText)">${v.phonetic}</td>
+                        <td class="p-2 border-r border-b content-editable text-brand-purple" contenteditable="true" onblur="updateDraftItem('vocabulary', ${index}, 'translation', this.innerText)">${v.translation}</td>
+                        <td class="p-2 border-r border-b content-editable text-xs" contenteditable="true" onblur="updateDraftItem('vocabulary', ${index}, 'contextSentence', this.innerText)">${v.contextSentence}</td>
+                        <td class="p-2 border-b content-editable text-xs text-gray-500" contenteditable="true" onblur="updateDraftItem('vocabulary', ${index}, 'extraSentence', this.innerText)">${v.extraSentence}</td>
+                    </tr>
+                `;
+            });
+
+            // Load Phrases
+            const pTable = document.getElementById("phrase-table-body");
+            pTable.innerHTML = "";
+            activeDraftPrep.phrases.forEach((ph, index) => {
+                pTable.innerHTML += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-2 border-r border-b text-center font-bold">${index + 1}</td>
+                        <td class="p-2 border-r border-b content-editable font-bold" contenteditable="true" onblur="updateDraftItem('phrases', ${index}, 'phrase', this.innerText)">${ph.phrase}</td>
+                        <td class="p-2 border-r border-b content-editable font-mono" contenteditable="true" onblur="updateDraftItem('phrases', ${index}, 'phonetic', this.innerText)">${ph.phonetic}</td>
+                        <td class="p-2 border-r border-b content-editable text-brand-blue" contenteditable="true" onblur="updateDraftItem('phrases', ${index}, 'translation', this.innerText)">${ph.translation}</td>
+                        <td class="p-2 border-r border-b content-editable text-xs" contenteditable="true" onblur="updateDraftItem('phrases', ${index}, 'contextSentence', this.innerText)">${ph.contextSentence}</td>
+                        <td class="p-2 border-b content-editable text-xs text-gray-500" contenteditable="true" onblur="updateDraftItem('phrases', ${index}, 'extraSentence', this.innerText)">${ph.extraSentence}</td>
+                    </tr>
+                `;
+            });
+
+            // Load 30 questions quiz editor
+            const qList = document.getElementById("quiz-list-editor");
+            qList.innerHTML = "";
+            activeDraftPrep.quiz.forEach((q, index) => {
+                qList.innerHTML += `
+                    <div class="p-4 border-2 border-gray-200 rounded-xl bg-orange-50/10 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="bg-brand-pink text-white text-xs px-2.5 py-0.5 rounded-full font-bold">第 ${index + 1} 题</span>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="text-xs font-bold text-gray-500">正确答案:</span>
+                                <select onchange="updateDraftQuizAnswer(${index}, this.value)" class="bg-white border-2 border-gray-800 rounded px-1 text-xs font-bold text-center">
+                                    <option value="A" ${q.answer === 'A' ? 'selected' : ''}>A</option>
+                                    <option value="B" ${q.answer === 'B' ? 'selected' : ''}>B</option>
+                                    <option value="C" ${q.answer === 'C' ? 'selected' : ''}>C</option>
+                                    <option value="D" ${q.answer === 'D' ? 'selected' : ''}>D</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="text" value="${q.question}" onchange="updateDraftQuizQuestion(${index}, this.value)" class="w-full px-3 py-1.5 rounded-lg border-2 border-gray-350 text-sm font-bold">
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <input type="text" value="${q.options[0]}" onchange="updateDraftQuizOption(${index}, 0, this.value)" class="px-2.5 py-1.5 rounded-lg border border-gray-300">
+                            <input type="text" value="${q.options[1]}" onchange="updateDraftQuizOption(${index}, 1, this.value)" class="px-2.5 py-1.5 rounded-lg border border-gray-300">
+                            <input type="text" value="${q.options[2]}" onchange="updateDraftQuizOption(${index}, 2, this.value)" class="px-2.5 py-1.5 rounded-lg border border-gray-300">
+                            <input type="text" value="${q.options[3]}" onchange="updateDraftQuizOption(${index}, 3, this.value)" class="px-2.5 py-1.5 rounded-lg border border-gray-300">
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Load reading links editor
+            const rlList = document.getElementById("reading-links-editor");
+            rlList.innerHTML = "";
+            activeDraftPrep.readingLinks.forEach((rl, index) => {
+                rlList.innerHTML += `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-300 text-xs">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-gray-500">推荐 ${index+1}:</span>
+                            <input type="text" value="${rl.title}" onchange="updateDraftReading(${index}, 'title', this.value)" class="flex-grow p-1.5 border border-gray-300 rounded font-bold text-gray-700">
+                        </div>
+                        <div>
+                            <input type="text" value="${rl.url}" onchange="updateDraftReading(${index}, 'url', this.value)" class="w-full p-1.5 border border-gray-300 rounded text-gray-500 font-mono">
+                        </div>
+                    </div>
+                `;
+            });
+            switchPreviewTab('subtab-grammar');
+        }
+
+        // Real-time inline edit trackers for activeDraftPrep
+        window.updateDraftItem = function(arrayName, index, field, text) {
+            if(activeDraftPrep[arrayName] && activeDraftPrep[arrayName][index]) {
+                activeDraftPrep[arrayName][index][field] = text.trim();
+            }
+        };
+        window.updateDraftQuizAnswer = function(index, val) {
+            activeDraftPrep.quiz[index].answer = val;
+        };
+        window.updateDraftQuizQuestion = function(index, val) {
+            activeDraftPrep.quiz[index].question = val;
+        };
+        window.updateDraftQuizOption = function(qIndex, oIndex, val) {
+            activeDraftPrep.quiz[qIndex].options[oIndex] = val;
+        };
+        window.updateDraftReading = function(index, field, val) {
+            activeDraftPrep.readingLinks[index][field] = val;
+        };
+
+        window.switchPreviewTab = function(subtabId) {
+            activePreviewTab = subtabId;
+            document.querySelectorAll(".subtab-panel").forEach(el => el.classList.add("hidden"));
+            document.querySelectorAll(".subtab-btn").forEach(btn => {
+                btn.className = "subtab-btn shrink-0 px-4 py-2 font-bold text-gray-500 border-b-4 border-transparent hover:text-gray-700 text-sm";
+            });
+
+            const activeBtn = document.getElementById(`btn-${subtabId}`);
+            if (activeBtn) {
+                activeBtn.className = "subtab-btn shrink-0 px-4 py-2 font-bold text-gray-700 border-b-4 border-brand-blue bg-blue-50/50 rounded-t-xl text-sm";
+            }
+            document.getElementById(`subtab-content-${subtabId.replace('subtab-', '')}`).classList.remove("hidden");
+        };
+
+        // --- 7. Prep Assignment Publishing ---
+        window.submitPrepPublish = async function() {
+            const title = document.getElementById("prep-assignment-title").value.trim();
+            const grammar = document.getElementById("edit-grammar-text").value.trim();
+            
+            // Collect checked student IDs
+            const selectedStudents = [];
+            document.querySelectorAll("input[name='prep-students']:checked").forEach(cb => {
+                selectedStudents.push(cb.value);
+            });
+
+            if (selectedStudents.length === 0) {
+                showToast("老师，请先在右上方勾选要发布预习的学生哦！", "⚠️");
+                return;
+            }
+
+            // Prepare student status tracker mapping
+            const studentStatus = {};
+            selectedStudents.forEach(sid => {
+                studentStatus[sid] = {
+                    completed: false,
+                    quizScore: 0,
+                    progress: { grammar: false, vocab: false, phrases: false, quiz: false, reading: false }
+                };
+            });
+
+            const payload = {
+                title: title,
+                grammar: grammar,
+                vocabulary: activeDraftPrep.vocabulary,
+                phrases: activeDraftPrep.phrases,
+                quiz: activeDraftPrep.quiz,
+                readingLinks: activeDraftPrep.readingLinks,
+                assignedStudents: selectedStudents,
+                publishedAt: new Date().toISOString(),
+                studentStatus: studentStatus
+            };
+
+            try {
+                const collRef = collection(db, 'artifacts', appId, 'public', 'data', 'pre_class_prep');
+                await addDoc(collRef, payload);
+                showToast("课前预习大冒险课件，发布成功！", "🚀");
+                cancelPrepPublish();
+            } catch (err) {
+                showToast("发布失败，请检查网络后重试", "❌");
+                window.logMsg(`❌ 课件发布异常: ${err.message}`, true);
+            }
+        };
+
+        window.cancelPrepPublish = function() {
+            document.getElementById("ai-result-panel").classList.add("hidden");
+            document.getElementById("lesson-raw-text").value = "";
+            document.getElementById("pdf-file-input").value = "";
+            document.getElementById("pdf-file-name").innerText = "点击或拖拽上传 PDF 教材";
+            selectedPdfFile = null;
+            extractedPdfText = "";
+        };
+
+        window.deletePrep = async function(id) {
+            if (!confirm("确定要删除这档已发布的课前预习吗？学生端的相应学习记录也将被抹除！")) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'pre_class_prep', id);
+                await deleteDoc(docRef);
+                showToast("已成功撤回发布！", "🗑️");
+            } catch (e) {
+                showToast("撤回失败", "❌");
+                window.logMsg(`❌ 课件下架失败: ${e.message}`, true);
+            }
+        };
+
+        function renderPrepList() {
+            const tbody = document.getElementById("prep-list-tbody");
+            tbody.innerHTML = "";
+            if (prepAssignments.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-400 font-bold">目前还没有发布任何课前预习哦！✨</td></tr>`;
+                return;
+            }
+
+            prepAssignments.forEach(p => {
+                const sNames = p.assignedStudents.map(id => {
+                    const student = studentsList.find(st => st.id === id);
+                    return student ? student.username : "未知学生";
+                }).join(", ");
+
+                let compCount = 0;
+                p.assignedStudents.forEach(sid => {
+                    if (p.studentStatus?.[sid]?.completed) compCount++;
+                });
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-orange-50/20 transition-all text-xs">
+                        <td class="p-3 font-bold text-gray-700">${p.title}</td>
+                        <td class="p-3 text-gray-400">${new Date(p.publishedAt).toLocaleString()}</td>
+                        <td class="p-3 font-semibold text-brand-purple max-w-xs truncate">${sNames}</td>
+                        <td class="p-3 text-center">
+                            <span class="bg-blue-50 text-brand-blue px-2.5 py-1 rounded-full font-bold">
+                                ${compCount} / ${p.assignedStudents.length} 已打卡
+                            </span>
+                        </td>
+                        <td class="p-3 text-right">
+                            <button onclick="deletePrep('${p.id}')" class="bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded-lg border border-gray-300 font-bold">撤回</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+
+        // --- 8. Post-class Summaries Tab Logic ---
+        window.handlePostClassSummarySubmit = async function(event) {
+            event.preventDefault();
+            const id = document.getElementById("edit-summary-id").value;
+            const title = document.getElementById("summary-title").value.trim();
+            const datetime = document.getElementById("summary-datetime").value;
+            const sid = document.getElementById("summary-student").value;
+            const rating = document.getElementById("summary-rating").value;
+            const feedback = document.getElementById("summary-feedback").value.trim();
+            const tasksRaw = document.getElementById("summary-tasks").value.trim();
+
+            if (!currentUser || !sid) return;
+
+            // Tasks parsing: split by lines
+            const tasks = tasksRaw.split("\n").filter(t => t.trim() !== "").map((t, idx) => ({
+                id: idx + 1,
+                text: t.trim(),
+                completed: false
+            }));
+
+            const payload = {
+                title: title,
+                classTime: datetime,
+                studentId: sid,
+                rating: rating,
+                feedback: feedback,
+                tasks: tasks,
+                publishedAt: new Date().toISOString(),
+                closed: false // Initial status is active/pending
+            };
+
+            try {
+                if (id) {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'post_class_summary', id);
+                    await updateDoc(docRef, {
+                        ...payload,
+                        closed: false // preserve or reset closed state on save
+                    });
+                    showToast("更新学习总结报告成功！", "✅");
+                } else {
+                    const collRef = collection(db, 'artifacts', appId, 'public', 'data', 'post_class_summary');
+                    await addDoc(collRef, payload);
+                    showToast("全新课后学习报告已投递给学生！", "🚀");
+                }
+                resetSummaryForm();
+            } catch (err) {
+                showToast("保存报告失败，请检查网络", "❌");
+                window.logMsg(`❌ 学习总结投递失败: ${err.message}`, true);
+            }
+        };
+
+        window.editSummary = function(id) {
+            const sum = classSummaries.find(s => s.id === id);
+            if (!sum) return;
+            document.getElementById("edit-summary-id").value = sum.id;
+            document.getElementById("summary-title").value = sum.title;
+            document.getElementById("summary-datetime").value = sum.classTime;
+            document.getElementById("summary-student").value = sum.studentId;
+            document.getElementById("summary-rating").value = sum.rating;
+            document.getElementById("summary-feedback").value = sum.feedback;
+            document.getElementById("summary-tasks").value = sum.tasks.map(t => t.text).join("\n");
+
+            document.getElementById("btn-cancel-edit-summary").classList.remove("hidden");
+            document.getElementById("btn-submit-summary").innerText = "💾 保存修改报告";
+            document.getElementById("summary-title").scrollIntoView({ behavior: 'smooth' });
+        };
+
+        window.deleteSummary = async function(id) {
+            if (!confirm("确定要删除这份课后总结吗？")) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'post_class_summary', id);
+                await deleteDoc(docRef);
+                showToast("总结报告已删除", "🗑️");
+            } catch (e) {
+                showToast("删除失败", "❌");
+                window.logMsg(`❌ 报告删除异常: ${e.message}`, true);
+            }
+        };
+
+        window.resetSummaryForm = function() {
+            document.getElementById("edit-summary-id").value = "";
+            document.getElementById("summary-title").value = "";
+            document.getElementById("summary-datetime").value = "";
+            document.getElementById("summary-student").value = "";
+            document.getElementById("summary-rating").value = "很棒";
+            document.getElementById("summary-feedback").value = "";
+            document.getElementById("summary-tasks").value = "";
+            document.getElementById("btn-cancel-edit-summary").classList.add("hidden");
+            document.getElementById("btn-submit-summary").innerText = "🚀 发送学习报告";
+        };
+
+        function renderSummaryList() {
+            const tbody = document.getElementById("summary-list-tbody");
+            tbody.innerHTML = "";
+            if (classSummaries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400 font-bold">还没有记录任何课后报告哦！✨</td></tr>`;
+                return;
+            }
+
+            classSummaries.forEach(s => {
+                const student = studentsList.find(st => st.id === s.studentId);
+                const sName = student ? student.username : "未知学生";
+
+                const isClosed = s.closed;
+                const statusTag = isClosed ? 
+                    `<span class="bg-gray-100 text-gray-450 px-2.5 py-1 rounded-full text-xs font-bold">已归档关闭</span>` : 
+                    `<span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">待办挑战中</span>`;
+
+                let ratingTag = "";
+                if (s.rating === "很棒") ratingTag = "🌟 很棒";
+                else if (s.rating === "不错") ratingTag = "✨ 不错";
+                else ratingTag = "💪 还需提高";
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-orange-50/20 transition-all text-xs">
+                        <td class="p-3 font-bold">${sName}</td>
+                        <td class="p-3 font-bold text-gray-700">${s.title}</td>
+                        <td class="p-3 text-gray-500">${new Date(s.classTime).toLocaleString()}</td>
+                        <td class="p-3 text-center font-bold">${ratingTag}</td>
+                        <td class="p-3 text-center">${statusTag}</td>
+                        <td class="p-3 text-right space-x-1">
+                            <button onclick="editSummary('${s.id}')" class="bg-amber-50 text-amber-700 hover:bg-amber-100 px-2 py-1 rounded-lg border border-gray-300 font-bold">编辑</button>
+                            <button onclick="deleteSummary('${s.id}')" class="bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded-lg border border-gray-300 font-bold">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+
+        // --- 9. Student View Portals Render Logic ---
+        function renderStudentPrepDashboard() {
+            if (userRole !== 'student' || !currentStudentProfile) return;
+
+            const grid = document.getElementById("student-prep-cards-grid");
+            grid.innerHTML = "";
+
+            const myPreps = prepAssignments.filter(p => p.assignedStudents.includes(currentStudentProfile.id));
+
+            if (myPreps.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-2 text-center py-16 bg-white border-4 border-dashed border-gray-300 rounded-cartoon p-6">
+                        <span class="text-6xl block mb-2">🌴</span>
+                        <h4 class="font-bold text-xl text-gray-500">太轻松啦！暂时没有新的预习挑战</h4>
+                        <p class="text-gray-400 text-sm mt-1">等Shadow老师发出魔法预习指令，我们再开启冒险吧！</p>
+                    </div>
+                `;
+                document.getElementById("student-prep-count").innerText = "0";
+                return;
+            }
+
+            let finishedCount = 0;
+            myPreps.forEach(p => {
+                const status = p.studentStatus?.[currentStudentProfile.id];
+                const isCompleted = status?.completed;
+                if (isCompleted) finishedCount++;
+
+                const progressBtn = isCompleted ? 
+                    `<button onclick="openStudyModal('${p.id}')" class="w-full bg-brand-green/10 text-brand-green border-3 border-brand-green py-2.5 rounded-2xl font-bold transition-all hover:bg-brand-green/20">🎉 打卡成功 (点击复习)</button>` : 
+                    `<button onclick="openStudyModal('${p.id}')" class="w-full bg-brand-pink text-white border-3 border-gray-850 py-2.5 rounded-2xl font-bold cartoon-shadow-pink transition-all transform hover:-translate-y-0.5 active:translate-y-1">⚔️ 开启预习大作战</button>`;
+
+                grid.innerHTML += `
+                    <div class="bg-white border-4 border-gray-800 rounded-cartoon p-5 cartoon-shadow relative overflow-hidden flex flex-col justify-between min-h-[180px]">
+                        <div class="absolute -top-6 -left-6 w-16 h-16 bg-brand-blue/10 rounded-full"></div>
+                        <div>
+                            <div class="flex items-center justify-between mb-3 relative z-10">
+                                <span class="bg-brand-blue text-white font-bold text-xs px-2.5 py-0.5 rounded-full">课前挑战</span>
+                                <span class="text-xs text-gray-400 font-medium">${new Date(p.publishedAt).toLocaleDateString()}</span>
+                            </div>
+                            <h4 class="font-bold text-lg text-gray-800 mb-4 line-clamp-2">${p.title}</h4>
+                        </div>
+                        <div class="w-full">${progressBtn}</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById("student-prep-count").innerText = finishedCount;
+            document.getElementById("student-stars-count").innerText = finishedCount * 10;
+        }
+
+        function renderStudentSummaryDashboard() {
+            if (userRole !== 'student' || !currentStudentProfile) return;
+
+            const grid = document.getElementById("student-summary-cards-grid");
+            grid.innerHTML = "";
+
+            const mySummaries = classSummaries.filter(s => s.studentId === currentStudentProfile.id);
+
+            if (mySummaries.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-2 text-center py-16 bg-white border-4 border-dashed border-gray-300 rounded-cartoon p-6">
+                        <span class="text-6xl block mb-2">🐚</span>
+                        <h4 class="font-bold text-xl text-gray-500">上课学习报告空空如也</h4>
+                        <p class="text-gray-400 text-sm mt-1">上完课后，Shadow老师会在这里写下你的精彩表现和遗留任务哦！</p>
+                    </div>
+                `;
+                return;
+            }
+
+            mySummaries.forEach(s => {
+                const totalTasks = s.tasks.length;
+                const doneTasks = s.tasks.filter(t => t.completed).length;
+                const allFinished = doneTasks === totalTasks;
+
+                let ratingEmoji = "✨";
+                let ratingColor = "bg-brand-yellow/10 border-brand-yellow text-amber-700";
+                if (s.rating === "很棒") {
+                    ratingEmoji = "👑 极其棒";
+                    ratingColor = "bg-green-50 border-brand-green text-brand-green";
+                } else if (s.rating === "不错") {
+                    ratingEmoji = "⭐ 不错哟";
+                } else {
+                    ratingEmoji = "💪 还要加把劲";
+                    ratingColor = "bg-rose-50 border-brand-pink text-brand-pink";
+                }
+
+                // Render tasks check list
+                let tasksHtml = "";
+                s.tasks.forEach((t, index) => {
+                    tasksHtml += `
+                        <label class="flex items-start space-x-2 p-2 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-orange-50/30 transition-all">
+                            <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleHomeworkTask('${s.id}', ${index}, this.checked)" class="mt-1 rounded text-brand-purple border-gray-300 focus:ring-brand-purple">
+                            <span class="${t.completed ? 'line-through text-gray-400' : 'text-gray-700 font-bold'} text-xs leading-relaxed">${t.text}</span>
+                        </label>
+                    `;
+                });
+
+                grid.innerHTML += `
+                    <div class="bg-white border-4 border-gray-800 rounded-cartoon p-5 cartoon-shadow flex flex-col justify-between gap-4">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between border-b border-dashed border-gray-150 pb-2">
+                                <span class="text-xs text-gray-400 font-bold">上课时间: ${new Date(s.classTime).toLocaleString()}</span>
+                                <span class="text-xs bg-brand-purple text-white font-bold px-2.5 py-0.5 rounded-full">课后总结</span>
+                            </div>
+                            <h4 class="font-bold text-lg text-gray-850 leading-snug">${s.title}</h4>
+                            
+                            <!-- 老师评语卡 -->
+                            <div class="bg-amber-50/60 p-3 rounded-2xl border-2 border-gray-850">
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <span class="text-xs font-bold text-gray-500">👩‍🏫 Shadow老师的评语：</span>
+                                    <span class="border-2 text-xs font-bold px-2 py-0.5 rounded-full ${ratingColor}">${ratingEmoji}</span>
+                                </div>
+                                <p class="text-xs text-gray-700 font-bold leading-relaxed whitespace-pre-wrap">${s.feedback}</p>
+                            </div>
+
+                            <!-- 遗留作业清单 -->
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center text-xs font-bold">
+                                    <span class="text-gray-500">🎯 遗留课后挑战清单：</span>
+                                    <span class="text-brand-purple">${doneTasks}/${totalTasks} 已打卡</span>
+                                </div>
+                                <div class="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar">
+                                    ${tasksHtml}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-dashed border-gray-150 flex items-center justify-between text-xs font-bold">
+                            <span class="text-gray-450">状态：</span>
+                            ${allFinished ? 
+                                `<span class="text-brand-green flex items-center space-x-1">🎉 挑战任务已全圆满完成！</span>` : 
+                                `<span class="text-brand-pink flex items-center space-x-1 animate-pulse">📝 还有任务等候打卡完成</span>`
+                            }
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Student updates homework check-in
+        window.toggleHomeworkTask = async function(summaryId, taskIndex, isChecked) {
+            const sum = classSummaries.find(s => s.id === summaryId);
+            if (!sum) return;
+
+            // Deep clone tasks
+            const updatedTasks = [...sum.tasks];
+            updatedTasks[taskIndex].completed = isChecked;
+
+            const allFinished = updatedTasks.every(t => t.completed);
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'post_class_summary', summaryId);
+                await updateDoc(docRef, {
+                    tasks: updatedTasks,
+                    closed: allFinished
+                });
+                
+                if (allFinished) {
+                    confetti({
+                        particleCount: 150,
+                        spread: 80,
+                        origin: { y: 0.6 }
+                    });
+                    showToast("太棒了！你已经完成了所有的课后挑战，大获全胜！", "👑");
+                } else {
+                    showToast("打卡标记同步成功！", "📝");
+                }
+            } catch (err) {
+                showToast("状态打卡同步失败", "❌");
+                window.logMsg(`❌ 课后打卡状态同步异常: ${err.message}`, true);
+            }
+        };
+
+
+        // --- 10. Pre-Class Study Immersive Flow ---
+        let currentQuizAnswers = {}; // Temp store for student quiz responses
+        
+        window.openStudyModal = function(prepId) {
+            const prep = prepAssignments.find(p => p.id === prepId);
+            if (!prep) return;
+
+            currentReviewingPrep = prep;
+            currentQuizAnswers = {};
+
+            // Setup title & render steps
+            document.getElementById("study-modal-title").innerText = prep.title;
+            document.getElementById("study-grammar-content").innerHTML = prep.grammar;
+
+            // Load vocabs to grid
+            const vGrid = document.getElementById("study-vocab-grid");
+            vGrid.innerHTML = "";
+            prep.vocabulary.forEach((v, idx) => {
+                vGrid.innerHTML += `
+                    <div class="bg-pink-50/50 hover:bg-pink-50 border-3 border-gray-850 rounded-2xl p-3 text-center cursor-pointer transition-all relative overflow-hidden min-h-[140px] flex flex-col justify-between select-none" onclick="flipCard(this)">
+                        <div>
+                            <span class="absolute top-1.5 left-2 bg-brand-pink text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">${idx + 1}</span>
+                            <h5 class="font-kids font-bold text-lg text-gray-800 mt-2">${v.word}</h5>
+                            <p class="text-xs text-gray-400 font-mono mt-0.5">${v.phonetic}</p>
+                        </div>
+                        <div class="card-back pt-2 border-t border-dashed border-pink-200 mt-2">
+                            <p class="text-xs font-bold text-brand-pink line-clamp-2">${v.translation}</p>
+                        </div>
+                        <div class="hidden-sentences text-[10px] text-gray-500 hidden text-left bg-white p-2 rounded-lg border border-pink-100 mt-2 space-y-1">
+                            <p>📚 <b>原文：</b>${v.contextSentence}</p>
+                            <p>🌟 <b>拓展：</b>${v.extraSentence}</p>
+                        </div>
+                        <button onclick="event.stopPropagation(); speakWord('${v.word}')" class="absolute bottom-2 right-2 bg-white hover:bg-pink-100 text-brand-pink p-1 rounded-full border-2 border-gray-850">
+                            <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            // Load phrases
+            const pGrid = document.getElementById("study-phrase-grid");
+            pGrid.innerHTML = "";
+            prep.phrases.forEach((ph, idx) => {
+                pGrid.innerHTML += `
+                    <div class="bg-blue-50/50 border-3 border-gray-850 rounded-2xl p-4 relative flex flex-col justify-between min-h-[150px]">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="bg-brand-blue text-white text-xs px-2 py-0.5 rounded-full font-bold">短语 ${idx + 1}</span>
+                                <button onclick="speakWord('${ph.phrase}')" class="text-brand-blue hover:text-blue-600">
+                                    <i data-lucide="volume-2" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                            <h5 class="font-bold text-base text-gray-800">${ph.phrase}</h5>
+                            <p class="text-xs text-gray-400 font-mono">${ph.phonetic}</p>
+                            <p class="text-xs text-brand-blue font-bold mt-1.5">释义：${ph.translation}</p>
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-blue-200 mt-3 text-[10px] text-gray-650 space-y-1 font-medium">
+                            <p>📚 <b>原文句：</b>${ph.contextSentence}</p>
+                            <p>🌟 <b>拓展句：</b>${ph.extraSentence}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Load quiz lists
+            const qList = document.getElementById("study-quiz-list");
+            qList.innerHTML = "";
+            prep.quiz.forEach((q, idx) => {
+                let optionsHtml = "";
+                q.options.forEach(opt => {
+                    const optLetter = opt.trim().charAt(0); // Expected format like "A. correct"
+                    optionsHtml += `
+                        <button onclick="selectQuizAnswer(${idx}, '${optLetter}', this)" class="quiz-opt-btn w-full text-left p-3 rounded-xl border-2 border-gray-300 font-semibold hover:bg-orange-50/50 transition-all text-xs flex items-center justify-between">
+                            <span>${opt}</span>
+                            <span class="status-marker text-sm"></span>
+                        </button>
+                    `;
+                });
+
+                qList.innerHTML += `
+                    <div class="p-4 bg-gray-50 border-3 border-gray-850 rounded-2xl space-y-3 relative">
+                        <span class="absolute top-2 right-2 text-[10px] text-gray-400 font-bold">第 ${idx + 1} / 30 题</span>
+                        <p class="font-bold text-gray-800 text-sm leading-relaxed">${q.question}</p>
+                        <div class="space-y-2" id="quiz-question-${idx}-options">
+                            ${optionsHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Load reading links
+            const rList = document.getElementById("study-reading-list");
+            rList.innerHTML = "";
+            prep.readingLinks.forEach(rl => {
+                rList.innerHTML += `
+                    <a href="${rl.url}" target="_blank" class="block p-4 bg-yellow-50/30 hover:bg-yellow-50 border-3 border-gray-850 rounded-2xl transition-all flex justify-between items-center">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🌲</span>
+                            <span class="font-bold text-gray-750 text-sm">${rl.title}</span>
+                        </div>
+                        <i data-lucide="external-link" class="w-5 h-5 text-brand-yellow"></i>
+                    </a>
+                `;
+            });
+
+            document.getElementById("student-study-modal").classList.remove("hidden");
+            switchStudyStep('step-grammar');
+            lucide.createIcons();
+        };
+
+        window.closeStudyModal = function() {
+            document.getElementById("student-study-modal").classList.add("hidden");
+            currentReviewingPrep = null;
+        };
+
+        window.switchStudyStep = function(stepId) {
+            activeStudyStep = stepId;
+            document.querySelectorAll(".study-step-panel").forEach(el => el.classList.add("hidden"));
+            document.querySelectorAll(".study-step-btn").forEach(btn => {
+                btn.className = "study-step-btn w-full text-left py-2.5 px-3 rounded-xl font-bold border-2 border-transparent text-gray-600 hover:bg-gray-100 flex items-center space-x-2";
+            });
+
+            const activeBtn = document.getElementById(`btn-${stepId}`);
+            if(activeBtn) {
+                activeBtn.className = "study-step-btn w-full text-left py-2.5 px-3 rounded-xl font-bold bg-brand-yellow border-2 border-gray-850 flex items-center space-x-2 text-gray-850";
+            }
+            document.getElementById(`study-${stepId}`).classList.remove("hidden");
+        };
+
+        // Text flip toggle card logic
+        window.flipCard = function(el) {
+            const hidden = el.querySelector(".hidden-sentences");
+            if (hidden.classList.contains("hidden")) {
+                hidden.classList.remove("hidden");
+                el.classList.add("bg-pink-100/50");
+            } else {
+                hidden.classList.add("hidden");
+                el.classList.remove("bg-pink-100/50");
+            }
+        };
+
+        // Standard Text-to-speech for kids pronunciation
+        window.speakWord = function(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                utterance.rate = 0.85; // slightly slower for children's learning
+                window.speechSynthesis.speak(utterance);
+            } else {
+                showToast("当前浏览器不支持发音播放功能", "⚠️");
+            }
+        };
+
+        window.speakText = function(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-CN';
+                window.speechSynthesis.speak(utterance);
+            }
+        };
+
+        // Interactive quiz answering response
+        window.selectQuizAnswer = function(qIndex, selectedOption, btnEl) {
+            if (!currentReviewingPrep) return;
+            
+            const questionData = currentReviewingPrep.quiz[qIndex];
+            const answer = questionData.answer.trim();
+
+            const parent = document.getElementById(`quiz-question-${qIndex}-options`);
+            parent.querySelectorAll(".quiz-opt-btn").forEach(btn => {
+                btn.className = "quiz-opt-btn w-full text-left p-3 rounded-xl border-2 border-gray-300 font-semibold hover:bg-orange-50/50 transition-all text-xs flex items-center justify-between";
+                btn.querySelector(".status-marker").innerText = "";
+            });
+
+            currentQuizAnswers[qIndex] = selectedOption;
+
+            if (selectedOption === answer) {
+                btnEl.className = "quiz-opt-btn w-full text-left p-3 rounded-xl border-2 border-brand-green bg-green-50 font-bold text-brand-green text-xs flex items-center justify-between";
+                btnEl.querySelector(".status-marker").innerText = "🌸 正确!";
+            } else {
+                btnEl.className = "quiz-opt-btn w-full text-left p-3 rounded-xl border-2 border-brand-pink bg-rose-50 font-bold text-brand-pink text-xs flex items-center justify-between";
+                btnEl.querySelector(".status-marker").innerText = "💪 加油！";
+            }
+
+            let correctCount = 0;
+            currentReviewingPrep.quiz.forEach((q, idx) => {
+                if (currentQuizAnswers[idx] === q.answer.trim()) correctCount++;
+            });
+
+            document.getElementById("quiz-progress-text").innerText = `答对：${correctCount} / 30 题`;
+        };
+
+        // Final Pre-class Check-In submitting to Database
+        window.handlePreClassCheckInSubmit = async function() {
+            if (!currentReviewingPrep || !currentStudentProfile) return;
+
+            let score = 0;
+            currentReviewingPrep.quiz.forEach((q, idx) => {
+                if (currentQuizAnswers[idx] === q.answer.trim()) score++;
+            });
+
+            const studentStatus = { ...currentReviewingPrep.studentStatus };
+            studentStatus[currentStudentProfile.id] = {
+                completed: true,
+                quizScore: score,
+                progress: { grammar: true, vocab: true, phrases: true, quiz: true, reading: true }
+            };
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'pre_class_prep', currentReviewingPrep.id);
+                await updateDoc(docRef, {
+                    studentStatus: studentStatus
+                });
+
+                confetti({
+                    particleCount: 200,
+                    spread: 100,
+                    origin: { y: 0.6 }
+                });
+
+                showToast(`打卡成功！您获得 ${score * 2} 分星际冒险分！⭐`, "👑");
+                closeStudyModal();
+                renderStudentPrepDashboard();
+            } catch (err) {
+                showToast("打卡保存失败，请稍后重试", "❌");
+                window.logMsg(`❌ 课前预习进度打卡更新失败: ${err.message}`, true);
+            }
+        };
+
+    </script>
+</body>
+</html>
